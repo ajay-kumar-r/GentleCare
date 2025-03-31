@@ -73,7 +73,7 @@ export default function LandingPage() {
         </Animated.Text>
         <Button
           mode="contained"
-          onPress={() => router.push("/")}
+          onPress={() => router.push("/auth/login")}
           style={[styles.button, { backgroundColor: colors.background }]}
           labelStyle={{ color: colors.primary }}
         >
