@@ -8,85 +8,76 @@ export default function LoginPage() {
   const { colors } = useTheme();
   const router = useRouter();
 
-  const fadeAnimCards = useRef(new Animated.Value(0)).current;
-  const slideAnimCards = useRef(new Animated.Value(50)).current;
+  const elderPressAnim = useRef(new Animated.Value(1)).current;
+  const caretakerPressAnim = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnimCards, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnimCards, {
-        toValue: 0,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+  const handlePress = (role: "elder" | "caretaker") => {
+    const anim = role === "elder" ? elderPressAnim : caretakerPressAnim;
+
+    Animated.sequence([
+      Animated.timing(anim, { toValue: 0.93, duration: 50, useNativeDriver: true }),
+      Animated.timing(anim, { toValue: 1, duration: 50, useNativeDriver: true }),
+    ]).start(() => {
+      if (role === "elder") {
+        router.push("/elderLogin");
+      } else {
+        router.push("/caretakerLogin");
+      }
+    });
+  };
 
   return (
-    <LinearGradient
-      colors={[colors.primary, colors.secondary]}
-      style={styles.gradient}
-    >
+    <LinearGradient colors={[colors.primary, colors.secondary]} style={styles.gradient}>
       <View style={styles.container}>
         <Text style={[styles.title, { color: colors.background }]}>Login</Text>
 
-        <Animated.View
-          style={[
-            styles.cardContainer,
-            {
-              opacity: fadeAnimCards,
-              transform: [{ translateY: slideAnimCards }],
-            },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.cardWrapper}
-            onPress={() => router.push("/elderLogin")}
-          >
-            <Card style={styles.card}>
-              <Card.Content style={styles.cardContent}>
-                <Image
-                  source={require("../../assets/images/elder-icon.png")}
-                  style={styles.image}
-                />
-                <Text
-                  style={[
-                    styles.cardText,
-                    { color: colors.primary, textShadowColor: "rgba(0, 0, 0, 0.5)", textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2 },
-                  ]}
-                >
-                  Elder
-                </Text>
-              </Card.Content>
-            </Card>
+        <View style={styles.cardContainer}>
+          <TouchableOpacity activeOpacity={1} onPress={() => handlePress("elder")}>
+            <Animated.View style={[styles.animatedCard, { transform: [{ scale: elderPressAnim }] }]}>
+              <Card style={styles.card}>
+                <Card.Content style={styles.cardContent}>
+                  <Image source={require("../../assets/images/elder-icon.png")} style={styles.image} />
+                  <Text
+                    style={[
+                      styles.cardText,
+                      {
+                        color: colors.primary,
+                        textShadowColor: "rgba(0, 0, 0, 0.3)",
+                        textShadowOffset: { width: 1, height: 1 },
+                        textShadowRadius: 2,
+                      },
+                    ]}
+                  >
+                    Elder
+                  </Text>
+                </Card.Content>
+              </Card>
+            </Animated.View>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.cardWrapper}
-            onPress={() => router.push("/caretakerLogin")}
-          >
-            <Card style={styles.card}>
-              <Card.Content style={styles.cardContent}>
-                <Image
-                  source={require("../../assets/images/caretaker-icon.png")}
-                  style={styles.image}
-                />
-                <Text
-                  style={[
-                    styles.cardText,
-                    { color: colors.primary, textShadowColor: "rgba(0, 0, 0, 0.5)", textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2 },
-                  ]}
-                >
-                  Caretaker
-                </Text>
-              </Card.Content>
-            </Card>
+          <TouchableOpacity activeOpacity={1} onPress={() => handlePress("caretaker")}>
+            <Animated.View style={[styles.animatedCard, { transform: [{ scale: caretakerPressAnim }] }]}>
+              <Card style={styles.card}>
+                <Card.Content style={styles.cardContent}>
+                  <Image source={require("../../assets/images/caretaker-icon.png")} style={styles.image} />
+                  <Text
+                    style={[
+                      styles.cardText,
+                      {
+                        color: colors.primary,
+                        textShadowColor: "rgba(0, 0, 0, 0.3)",
+                        textShadowOffset: { width: 1, height: 1 },
+                        textShadowRadius: 2,
+                      },
+                    ]}
+                  >
+                    Caretaker
+                  </Text>
+                </Card.Content>
+              </Card>
+            </Animated.View>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
 
         <View style={styles.registerContainer}>
           <Text
@@ -95,7 +86,7 @@ export default function LoginPage() {
               {
                 color: colors.text,
                 fontWeight: "bold",
-                textShadowColor: "rgba(0, 0, 0, 0.5)",
+                textShadowColor: "rgba(0, 0, 0, 0.3)",
                 textShadowOffset: { width: 1, height: 1 },
                 textShadowRadius: 2,
               },
@@ -103,14 +94,14 @@ export default function LoginPage() {
           >
             New User?{" "}
           </Text>
-          <TouchableOpacity onPress={() => router.push("/register")}>
+          <TouchableOpacity onPress={() => router.push("/auth/signup")}>
             <Text
               style={[
                 styles.registerLink,
                 {
                   color: colors.secondary,
                   fontWeight: "bold",
-                  textShadowColor: "rgba(0, 0, 0, 0.5)",
+                  textShadowColor: "rgba(0, 0, 0, 0.3)",
                   textShadowOffset: { width: 1, height: 1 },
                   textShadowRadius: 2,
                 },
@@ -147,11 +138,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 20,
   },
-  cardWrapper: {
-    flex: 1,
-    maxWidth: 170,
+  animatedCard: {
+    width: 150,
   },
   card: {
+    width: 150,
     borderRadius: 15,
     elevation: 5,
     backgroundColor: "white",
