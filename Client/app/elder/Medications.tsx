@@ -100,8 +100,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   button: {
-    flex: 1,
     marginHorizontal: 5,
+    borderRadius: 5,
+    width: "auto",
+    marginTop: 10,
+    padding: 6,
   },
   takenButton: {
     backgroundColor: "#4CAF50", 
@@ -109,5 +112,6 @@ const styles = StyleSheet.create({
   skippedButton: {
     borderColor: "#D32F2F", 
     color: "#D32F2F", 
+    flex: 1,
   },
 });

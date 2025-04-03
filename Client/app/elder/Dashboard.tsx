@@ -43,7 +43,7 @@ export default function ElderDashboard() {
             title="Meal Tracker"
             icon="food-apple"
             color="#81C784"
-            onPress={() => router.push("/elder/mealTracker")}
+            onPress={() => router.push("/elder/MealTracker")}
           />
           <QuickAccessCard
             title="Social Connect"

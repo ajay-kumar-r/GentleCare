@@ -12,7 +12,6 @@ export default function Notifications() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<string[]>([]);
 
-  // Load notifications when the page opens
   useEffect(() => {
     const loadNotifications = async () => {
       try {
@@ -28,14 +27,12 @@ export default function Notifications() {
     loadNotifications();
   }, []);
 
-  // Remove a single notification
   const deleteNotification = async (index: number) => {
     const updatedNotifications = notifications.filter((_, i) => i !== index);
     setNotifications(updatedNotifications);
     await AsyncStorage.setItem("notifications", JSON.stringify(updatedNotifications));
   };
 
-  // Clear all notifications
   const clearAllNotifications = async () => {
     Alert.alert("Clear All", "Are you sure you want to clear all notifications?", [
       { text: "Cancel", style: "cancel" },
@@ -51,7 +48,6 @@ export default function Notifications() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header with Back and Clear All Buttons */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={28} color={colors.primary} />
@@ -64,7 +60,6 @@ export default function Notifications() {
         )}
       </View>
 
-      {/* Notifications List */}
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {notifications.length > 0 ? (
           notifications.map((text, index) => (
