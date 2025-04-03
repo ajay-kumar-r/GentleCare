@@ -50,7 +50,7 @@ export default function ElderLoginPage() {
         />
         <Button
           mode="contained"
-          onPress={() => router.push("/dashboard/elder")}
+          onPress={() => router.push("../elder/Dashboard")}
           style={styles.button}
         >
           Login
