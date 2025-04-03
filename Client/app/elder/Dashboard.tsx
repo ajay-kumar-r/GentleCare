@@ -37,7 +37,7 @@ export default function ElderDashboard() {
             title="Medication"
             icon="pill"
             color="#64B5F6"
-            onPress={() => router.push("/elder/medications")}
+            onPress={() => router.push("/elder/Medications")}
           />
           <QuickAccessCard
             title="Meal Tracker"
