@@ -1,12 +1,10 @@
 import { View, ScrollView, StyleSheet } from "react-native";
-import { Text, Button, useTheme } from "react-native-paper";
+import { Text, useTheme } from "react-native-paper";
 import HealthCard from "../components/Elder/HealthCard";
 import HealthChart from "../components/Elder/HealthChart";
-import { useRouter } from "expo-router";
 
 export default function HealthTracking() {
   const { colors } = useTheme();
-  const router = useRouter();
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -30,10 +28,6 @@ export default function HealthTracking() {
           data={[95, 97, 92, 96, 94, 93, 95]}
           color="#81C784"
         />
-
-        <Button mode="contained" style={styles.button} onPress={() => router.push("/elder/HealthHistory")}>
-          View Full History
-        </Button>
       </View>
     </ScrollView>
   );
@@ -41,12 +35,13 @@ export default function HealthTracking() {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingBottom: 50,
+    flexGrow: 1,
   },
   container: {
     flex: 1,
     padding: 20,
     backgroundColor: "#F5F5F5",
+    paddingBottom: 50,
   },
   title: {
     fontSize: 24,
@@ -55,8 +50,5 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
-  },
-  button: {
-    marginTop: 20,
   },
 });
