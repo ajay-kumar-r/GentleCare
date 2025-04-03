@@ -18,26 +18,18 @@ export default function ElderLoginPage() {
   const [password, setPassword] = useState("");
 
   return (
-    <LinearGradient
-      colors={["#4A90E2", "#F5A623"]} // Subtly lighter blue-to-orange gradient
-      style={styles.gradient}
-    >
+    <LinearGradient colors={["#4A90E2", "#F5A623"]} style={styles.gradient}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
       >
-        {/* Logo */}
         <Image
           source={require("../../assets/images/elder-icon.png")}
           style={styles.logo}
         />
-
-        {/* Title */}
         <Text style={[styles.title, { color: colors.primary }]}>
           Elder Login
         </Text>
-
-        {/* Input Fields */}
         <TextInput
           label="Email"
           mode="outlined"
@@ -47,7 +39,6 @@ export default function ElderLoginPage() {
           style={styles.input}
           theme={{ colors: { primary: colors.primary } }}
         />
-
         <TextInput
           label="Password"
           mode="outlined"
@@ -57,8 +48,6 @@ export default function ElderLoginPage() {
           style={styles.input}
           theme={{ colors: { primary: colors.primary } }}
         />
-
-        {/* Login Button */}
         <Button
           mode="contained"
           onPress={() => router.push("/dashboard/elder")}
@@ -66,15 +55,11 @@ export default function ElderLoginPage() {
         >
           Login
         </Button>
-
-        {/* Forgot Password */}
         <TouchableOpacity>
           <Text style={[styles.link, { color: colors.primary }]}>
             Forgot Password?
           </Text>
         </TouchableOpacity>
-
-        {/* Register Link */}
         <View style={styles.registerContainer}>
           <Text style={[styles.registerText, { color: colors.text }]}>
             New User?
@@ -123,10 +108,10 @@ const styles = StyleSheet.create({
   },
   link: {
     marginTop: 10,
-    fontSize: 18, // Increased font size
+    fontSize: 18,
     fontFamily: "Poppins_600SemiBold",
     textDecorationLine: "underline",
-    textShadowColor: "rgba(0, 0, 0, 0.3)", // Added shadow
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
@@ -135,18 +120,18 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   registerText: {
-    fontSize: 18, // Increased font size
+    fontSize: 18,
     fontFamily: "Poppins_400Regular",
-    textShadowColor: "rgba(0, 0, 0, 0.3)", // Added shadow
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
   registerLink: {
-    fontSize: 18, // Increased font size
+    fontSize: 18,
     fontFamily: "Poppins_600SemiBold",
     textDecorationLine: "underline",
     marginLeft: 5,
-    textShadowColor: "rgba(0, 0, 0, 0.3)", // Added shadow
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },

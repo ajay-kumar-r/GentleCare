@@ -21,7 +21,7 @@ export default function LoginPage() {
       if (role === "elder") {
         router.push("/auth/elderLogin");
       } else {
-        router.push("/caretakerLogin");
+        router.push("/auth/caretakerLogin");
       }
     });
   };
