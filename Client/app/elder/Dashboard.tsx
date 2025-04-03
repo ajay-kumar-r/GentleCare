@@ -31,7 +31,7 @@ export default function ElderDashboard() {
             title="Health Tracking"
             icon="heart-pulse"
             color="#E57373"
-            onPress={() => router.push("/elder/healthTracking")}
+            onPress={() => router.push("/elder/HealthTracking")}
           />
           <QuickAccessCard
             title="Medication"
