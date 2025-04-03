@@ -19,7 +19,7 @@ export default function LoginPage() {
       Animated.timing(anim, { toValue: 1, duration: 50, useNativeDriver: true }),
     ]).start(() => {
       if (role === "elder") {
-        router.push("/elderLogin");
+        router.push("/auth/elderLogin");
       } else {
         router.push("/caretakerLogin");
       }
