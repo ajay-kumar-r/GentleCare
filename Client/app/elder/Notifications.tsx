@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { Text, Card, IconButton, useTheme } from "react-native-paper";
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { Text, IconButton, useTheme } from "react-native-paper";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NotificationItem from "../components/Elder/NotificationItem";
 import { Ionicons } from "@expo/vector-icons";
+import { Swipeable } from "react-native-gesture-handler";
 
 export default function Notifications() {
   const { colors } = useTheme();
@@ -27,21 +28,59 @@ export default function Notifications() {
     loadNotifications();
   }, []);
 
+  // Remove a single notification
+  const deleteNotification = async (index: number) => {
+    const updatedNotifications = notifications.filter((_, i) => i !== index);
+    setNotifications(updatedNotifications);
+    await AsyncStorage.setItem("notifications", JSON.stringify(updatedNotifications));
+  };
+
+  // Clear all notifications
+  const clearAllNotifications = async () => {
+    Alert.alert("Clear All", "Are you sure you want to clear all notifications?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Yes",
+        onPress: async () => {
+          setNotifications([]);
+          await AsyncStorage.removeItem("notifications");
+        },
+      },
+    ]);
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header with Back Button */}
+      {/* Header with Back and Clear All Buttons */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={28} color={colors.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.primary }]}>Notifications</Text>
+        {notifications.length > 0 && (
+          <TouchableOpacity onPress={clearAllNotifications}>
+            <Ionicons name="trash-outline" size={28} color={colors.primary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Notifications List */}
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {notifications.length > 0 ? (
           notifications.map((text, index) => (
-            <NotificationItem key={index} text={text} />
+            <Swipeable
+              key={index}
+              renderRightActions={() => (
+                <TouchableOpacity
+                  onPress={() => deleteNotification(index)}
+                  style={styles.deleteButton}
+                >
+                  <Ionicons name="trash" size={24} color="red" />
+                </TouchableOpacity>
+              )}
+            >
+              <NotificationItem text={text} />
+            </Swipeable>
           ))
         ) : (
           <Text style={[styles.noNotifications, { color: colors.text }]}>
@@ -62,12 +101,12 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 20,
   },
   headerTitle: {
     fontSize: 22,
     fontFamily: "Poppins_700Bold",
-    marginLeft: 10,
   },
   scrollContent: {
     paddingBottom: 20,
@@ -77,5 +116,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Poppins_400Regular",
     marginTop: 50,
+  },
+  deleteButton: {
+    justifyContent: "center",
+    alignItems: "center",
+    width: 60,
+    height: "100%",
+    borderRadius: 10,
   },
 });
