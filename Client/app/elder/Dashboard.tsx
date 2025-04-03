@@ -55,7 +55,7 @@ export default function ElderDashboard() {
 
         <View style={styles.notificationsHeader}>
           <Text style={[styles.sectionTitle, { color: colors.primary }]}>Notifications</Text>
-          <TouchableOpacity onPress={() => router.push("/elder/notifications")}>
+          <TouchableOpacity onPress={() => router.push("/elder/Notifications")}>
             <MaterialIcons
               name="arrow-forward-ios"
               size={22}
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   notificationsHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 5,
+    paddingHorizontal: 1,
     alignItems: "center",
     marginTop: 10,
   },
