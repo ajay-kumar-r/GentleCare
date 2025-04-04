@@ -29,13 +29,11 @@ export default function CaretakerLogin() {
           />
         </View>
 
-        {/* Forgot Password */}
         <TouchableOpacity>
           <Text style={styles.forgotPassword}>Forgot Password?</Text>
         </TouchableOpacity>
 
-        {/* Login Button */}
-        <Button mode="contained" onPress={() => router.push("/caretakerDashboard")} style={styles.button}>
+        <Button mode="contained" onPress={() => router.push("/caretaker/Dashboard")} style={styles.button}>
           Login
         </Button>
       </View>
