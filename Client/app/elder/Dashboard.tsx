@@ -49,7 +49,7 @@ export default function ElderDashboard() {
             title="Social Connect"
             icon="account-group"
             color="#FFD54F"
-            onPress={() => router.push("/elder/socialConnect")}
+            onPress={() => router.push("/elder/SocialConnect")}
           />
         </View>
 
