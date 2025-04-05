@@ -19,7 +19,7 @@ export default function ElderDashboard() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <Avatar.Image size={55} source={require("../../assets/images/elder-icon.png")} />
-        <Text style={[styles.welcomeText, { color: colors.primary }]}>Welcome, John Doe</Text>
+        <Text style={[styles.welcomeText, { color: colors.primary }]}>Welcome, John</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>

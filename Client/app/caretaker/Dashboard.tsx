@@ -19,7 +19,7 @@ export default function CaretakerDashboard() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <Avatar.Image size={55} source={require("../../assets/images/caretaker-icon.png")} />
-        <Text style={[styles.welcomeText, { color: colors.primary }]}>Welcome, John (Caretaker)</Text>
+        <Text style={[styles.welcomeText, { color: colors.primary }]}>Welcome, Ram (Caretaker)</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -51,7 +51,20 @@ export default function CaretakerDashboard() {
             color="#FFD54F"
             onPress={() => router.push("/caretaker/EmergencyAlerts")}
           />
+          <QuickAccessCard
+            title="Prescriptions"
+            icon="receipt"
+            color="#9575CD"
+            onPress={() => router.push("/caretaker/Prescriptions")}
+          />
+          <QuickAccessCard
+            title="Location Tracker"
+            icon="location"
+            color="#4DB6AC"
+            onPress={() => router.push("/caretaker/LocationTracker")}
+          />
         </View>
+
 
         <View style={styles.notificationsHeader}>
           <Text style={[styles.sectionTitle, { color: colors.primary }]}>Notifications</Text>
