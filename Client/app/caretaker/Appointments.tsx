@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
-  FlatList,
-  Modal,
   ScrollView,
+  Modal,
   Animated,
+  Platform,
 } from "react-native";
 import {
   Card,
@@ -16,7 +16,9 @@ import {
   FAB,
   TextInput,
   Snackbar,
+  Menu,
 } from "react-native-paper";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 export default function Appointments() {
   const { colors } = useTheme();
@@ -57,25 +59,42 @@ export default function Appointments() {
     notes: "",
   });
 
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
-
   const [fabPosition, setFabPosition] = useState(new Animated.Value(30));
+
+  // Dropdown menu visibility
+  const [doctorMenuVisible, setDoctorMenuVisible] = useState(false);
+  const [timeMenuVisible, setTimeMenuVisible] = useState(false);
+  const [locationMenuVisible, setLocationMenuVisible] = useState(false);
+
+  const doctorOptions = ["Dr. Priya Sharma", "Dr. Rahul Verma", "Dr. Aarti Mehta"];
+  const timeOptions = ["10:30 AM", "02:00 PM", "04:15 PM"];
+  const locationOptions = ["Sunshine Hospital", "Green Health Clinic", "City MedCare"];
 
   useEffect(() => {
     if (snackbarVisible) {
       Animated.timing(fabPosition, {
-        toValue: 80, 
+        toValue: 80,
         duration: 300,
         useNativeDriver: false,
       }).start();
     } else {
       Animated.timing(fabPosition, {
-        toValue: 30, 
+        toValue: 30,
         duration: 300,
         useNativeDriver: false,
       }).start();
     }
   }, [snackbarVisible]);
+
+  const handleDateConfirm = (event: any, selected?: Date) => {
+    setShowDatePicker(false);
+    if (selected) {
+      const isoDate = selected.toISOString().split("T")[0];
+      setNewAppointment((prev) => ({ ...prev, date: isoDate }));
+    }
+  };
 
   const handleViewDetails = (appointment: any) => {
     setSelectedAppointment(appointment);
@@ -105,10 +124,7 @@ export default function Appointments() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Text style={[styles.header, { color: colors.primary }]}>Appointments</Text>
 
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent} 
-        showsVerticalScrollIndicator={true}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={true}>
         {appointments.map((item) => (
           <Card key={item.id} style={styles.card} mode="outlined">
             <Card.Content>
@@ -135,6 +151,7 @@ export default function Appointments() {
         />
       </Animated.View>
 
+      {/* View Appointment Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -159,19 +176,9 @@ export default function Appointments() {
               <Text style={styles.detailLabel}>Purpose:</Text>
               <Text>{selectedAppointment?.purpose}</Text>
 
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                 <Text style={styles.detailLabel}>Notes:</Text>
-                <IconButton
-                  icon="pencil"
-                  size={20}
-                  onPress={() => setIsEditingNotes(true)}
-                />
+                <IconButton icon="pencil" size={20} onPress={() => setIsEditingNotes(true)} />
               </View>
 
               {isEditingNotes ? (
@@ -194,37 +201,128 @@ export default function Appointments() {
         </View>
       </Modal>
 
+      {/* Request Appointment Modal */}
       <Modal visible={requestModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Request Appointment</Text>
-              <IconButton
-                icon="close"
-                onPress={() => setRequestModalVisible(false)}
-              />
+              <IconButton icon="close" onPress={() => setRequestModalVisible(false)} />
             </View>
 
             <ScrollView style={styles.modalBody}>
-              {[
-                { label: "Doctor's Name", key: "doctor" },
-                { label: "Date (YYYY-MM-DD)", key: "date" },
-                { label: "Time", key: "time" },
-                { label: "Location", key: "location" },
-                { label: "Purpose", key: "purpose" },
-                { label: "Notes", key: "notes" },
-              ].map(({ label, key }) => (
-                <TextInput
-                  key={key}
-                  label={label}
-                  value={(newAppointment as any)[key]}
-                  onChangeText={(text) =>
-                    setNewAppointment((prev) => ({ ...prev, [key]: text }))
-                  }
-                  multiline={key === "notes"}
-                  style={[styles.input, key === "notes" && { minHeight: 60 }]}
+              {/* Doctor Dropdown */}
+              <Menu
+                visible={doctorMenuVisible}
+                onDismiss={() => setDoctorMenuVisible(false)}
+                anchor={
+                  <TextInput
+                    label="Doctor's Name"
+                    value={newAppointment.doctor}
+                    style={styles.input}
+                    editable={false}
+                    onPressIn={() => setDoctorMenuVisible(true)}
+                    right={<TextInput.Icon icon="menu-down" />}
+                  />
+                }
+              >
+                {doctorOptions.map((doc, index) => (
+                  <Menu.Item
+                    key={index}
+                    onPress={() => {
+                      setNewAppointment((prev) => ({ ...prev, doctor: doc }));
+                      setDoctorMenuVisible(false);
+                    }}
+                    title={doc}
+                  />
+                ))}
+              </Menu>
+
+              {/* Date Picker */}
+              <TextInput
+                label="Date"
+                value={newAppointment.date}
+                style={styles.input}
+                editable={false}
+                right={<TextInput.Icon icon="calendar" onPress={() => setShowDatePicker(true)} />}
+              />
+              {showDatePicker && (
+                <DateTimePicker
+                  value={newAppointment.date ? new Date(newAppointment.date) : new Date()}
+                  mode="date"
+                  display={Platform.OS === "ios" ? "inline" : "default"}
+                  onChange={handleDateConfirm}
                 />
-              ))}
+              )}
+
+              {/* Time Slot Dropdown */}
+              <Menu
+                visible={timeMenuVisible}
+                onDismiss={() => setTimeMenuVisible(false)}
+                anchor={
+                  <TextInput
+                    label="Time Slot"
+                    value={newAppointment.time}
+                    style={styles.input}
+                    editable={false}
+                    onPressIn={() => setTimeMenuVisible(true)}
+                    right={<TextInput.Icon icon="menu-down" />}
+                  />
+                }
+              >
+                {timeOptions.map((time, index) => (
+                  <Menu.Item
+                    key={index}
+                    onPress={() => {
+                      setNewAppointment((prev) => ({ ...prev, time }));
+                      setTimeMenuVisible(false);
+                    }}
+                    title={time}
+                  />
+                ))}
+              </Menu>
+
+              {/* Location Dropdown */}
+              <Menu
+                visible={locationMenuVisible}
+                onDismiss={() => setLocationMenuVisible(false)}
+                anchor={
+                  <TextInput
+                    label="Location"
+                    value={newAppointment.location}
+                    style={styles.input}
+                    editable={false}
+                    onPressIn={() => setLocationMenuVisible(true)}
+                    right={<TextInput.Icon icon="menu-down" />}
+                  />
+                }
+              >
+                {locationOptions.map((loc, index) => (
+                  <Menu.Item
+                    key={index}
+                    onPress={() => {
+                      setNewAppointment((prev) => ({ ...prev, location: loc }));
+                      setLocationMenuVisible(false);
+                    }}
+                    title={loc}
+                  />
+                ))}
+              </Menu>
+
+              <TextInput
+                label="Purpose"
+                value={newAppointment.purpose}
+                onChangeText={(text) => setNewAppointment((prev) => ({ ...prev, purpose: text }))}
+                style={styles.input}
+              />
+
+              <TextInput
+                label="Notes"
+                value={newAppointment.notes}
+                onChangeText={(text) => setNewAppointment((prev) => ({ ...prev, notes: text }))}
+                multiline
+                style={[styles.input, { minHeight: 60 }]}
+              />
 
               <Button
                 mode="contained"
@@ -267,9 +365,9 @@ export default function Appointments() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1, 
+    flex: 1,
     paddingTop: 40,
-    paddingBottom: 0, 
+    paddingBottom: 0,
   },
   header: {
     fontSize: 24,
