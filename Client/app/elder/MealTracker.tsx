@@ -1,14 +1,21 @@
 import { useState } from "react";
-import { View, ScrollView, StyleSheet, Modal, TextInput } from "react-native";
-import { Text, Button, useTheme } from "react-native-paper";
+import { View, ScrollView, StyleSheet, Modal, TextInput, Animated } from "react-native";
+import { Text, Button, useTheme, Snackbar } from "react-native-paper";
 import MealItem from "../components/Elder/MealItem";
 import MealSuggestion from "../components/Elder/MealSuggestion";
+import { Calendar } from "react-native-calendars";
 
-const initialMeals = [
-  { id: 1, name: "Oatmeal with Berries", time: "8:00 AM", calories: 250, protein: 6, carbs: 40, status: "pending" },
-  { id: 2, name: "Grilled Chicken Salad", time: "1:00 PM", calories: 350, protein: 30, carbs: 20, status: "pending" },
-  { id: 3, name: "Steamed Salmon with Veggies", time: "7:00 PM", calories: 400, protein: 35, carbs: 15, status: "pending" },
-];
+const initialMeals = {
+  "2025-04-07": [
+    { id: 1, name: "Oatmeal with Berries", time: "8:00 AM", calories: 250, protein: 6, carbs: 40, status: "pending" },
+    { id: 2, name: "Grilled Chicken Salad", time: "1:00 PM", calories: 350, protein: 30, carbs: 20, status: "pending" },
+    { id: 3, name: "Steamed Salmon with Veggies", time: "7:00 PM", calories: 400, protein: 35, carbs: 15, status: "pending" },
+  ],
+  "2025-04-08": [
+    { id: 4, name: "Veggie Stir Fry", time: "8:00 AM", calories: 220, protein: 5, carbs: 40, status: "pending" },
+    { id: 5, name: "Chicken Caesar Salad", time: "12:30 PM", calories: 380, protein: 35, carbs: 12, status: "pending" },
+  ],
+};
 
 const mealSuggestions = [
   { name: "Quinoa & Avocado Salad", calories: 320, protein: 12, carbs: 40 },
@@ -17,16 +24,21 @@ const mealSuggestions = [
 
 export default function MealTracker() {
   const { colors } = useTheme();
+  const [selectedDate, setSelectedDate] = useState<string>("2025-04-07");
   const [meals, setMeals] = useState(initialMeals);
   const [modalVisible, setModalVisible] = useState(false);
   const [mealData, setMealData] = useState({ name: "", time: "", calories: "", protein: "", carbs: "" });
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMsg, setSnackbarMsg] = useState("");
+  const [fabBottom, setFabBottom] = useState(new Animated.Value(20));
 
   const handleMealStatus = (id: number, status: "eaten" | "skipped") => {
-    setMeals((prevMeals) =>
-      prevMeals.map((meal) =>
-        meal.id === id ? { ...meal, status } : meal
-      )
+    const updatedMeals = { ...meals };
+    updatedMeals[selectedDate] = updatedMeals[selectedDate].map((meal) =>
+      meal.id === id ? { ...meal, status } : meal
     );
+    setMeals(updatedMeals);
+    showSnackbar(status === "eaten" ? "Meal marked as eaten" : "Meal skipped");
   };
 
   const handleAddMeal = () => {
@@ -36,7 +48,7 @@ export default function MealTracker() {
     }
 
     const newMeal = {
-      id: meals.length + 1,
+      id: meals[selectedDate]?.length + 1 || 1,
       name: mealData.name,
       time: mealData.time,
       calories: parseInt(mealData.calories),
@@ -45,31 +57,75 @@ export default function MealTracker() {
       status: "pending",
     };
 
-    setMeals([...meals, newMeal]);
+    const updatedMeals = { ...meals };
+    if (!updatedMeals[selectedDate]) {
+      updatedMeals[selectedDate] = [];
+    }
+    updatedMeals[selectedDate].push(newMeal);
+
+    setMeals(updatedMeals);
     setModalVisible(false);
     setMealData({ name: "", time: "", calories: "", protein: "", carbs: "" });
   };
 
+  const handleDateSelect = (day: any) => {
+    setSelectedDate(day.dateString);
+  };
+
+  const showSnackbar = (message: string) => {
+    setSnackbarMsg(message);
+    setSnackbarVisible(true);
+    Animated.timing(fabBottom, {
+      toValue: 70,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+
+    setTimeout(() => {
+      setSnackbarVisible(false);
+      Animated.timing(fabBottom, {
+        toValue: 20,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    }, 2500);
+  };
+
+  const mealsForSelectedDate = meals[selectedDate] || [];
+
   return (
     <View style={styles.container}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent} 
-        showsVerticalScrollIndicator={true}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={true}>
         <Text style={[styles.title, { color: colors.primary }]}>Meal Tracker</Text>
 
-        {meals.map((meal) => (
-          <MealItem
-            key={meal.id}
-            name={meal.name}
-            time={meal.time}
-            calories={meal.calories}
-            protein={meal.protein}
-            carbs={meal.carbs}
-            onMarkEaten={() => handleMealStatus(meal.id, "eaten")}
-            onSkip={() => handleMealStatus(meal.id, "skipped")}
-          />
-        ))}
+        <Calendar
+        onDayPress={handleDateSelect}
+        markedDates={{
+          [selectedDate]: { selected: true, marked: true, selectedColor: "#007bff" },
+        }}
+        theme={{
+          selectedDayBackgroundColor: "#007bff",
+          todayTextColor: "#007bff",
+        }}
+        style={styles.calendar}
+      />
+
+        {mealsForSelectedDate.length === 0 ? (
+          <Text style={styles.noMealsText}>No meals for this day.</Text>
+        ) : (
+          mealsForSelectedDate.map((meal) => (
+            <MealItem
+              key={meal.id}
+              name={meal.name}
+              time={meal.time}
+              calories={meal.calories}
+              protein={meal.protein}
+              carbs={meal.carbs}
+              onMarkEaten={() => handleMealStatus(meal.id, "eaten")}
+              onSkip={() => handleMealStatus(meal.id, "skipped")}
+            />
+          ))
+        )}
 
         <Text style={[styles.sectionTitle, { color: colors.primary }]}>ML-Based Meal Suggestions</Text>
         {mealSuggestions.map((suggestion, index) => (
@@ -102,6 +158,17 @@ export default function MealTracker() {
           </View>
         </View>
       </Modal>
+
+      <Animated.View style={[styles.fabContainer, { bottom: fabBottom }]}>
+        <Snackbar
+          visible={snackbarVisible}
+          onDismiss={() => setSnackbarVisible(false)}
+          duration={2500}
+          style={styles.snackbar}
+        >
+          {snackbarMsg}
+        </Snackbar>
+      </Animated.View>
     </View>
   );
 }
@@ -125,6 +192,13 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_700Bold",
     marginTop: 20,
     marginBottom: 10,
+  },
+  noMealsText: {
+    textAlign: "center",
+    marginTop: 30,
+    fontSize: 16,
+    fontStyle: "italic",
+    color: "#666",
   },
   addMealButton: {
     position: "absolute",
@@ -166,5 +240,14 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
     marginHorizontal: 5,
+  },
+  fabContainer: {
+    position: "absolute",
+    right: 20,
+  },
+  snackbar: {
+    backgroundColor: "#fff",
+    marginBottom: 10,
+    marginHorizontal: 16,
   },
 });
