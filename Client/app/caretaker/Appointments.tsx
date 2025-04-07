@@ -63,7 +63,6 @@ export default function Appointments() {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [fabPosition, setFabPosition] = useState(new Animated.Value(30));
 
-  // Dropdown menu visibility
   const [doctorMenuVisible, setDoctorMenuVisible] = useState(false);
   const [timeMenuVisible, setTimeMenuVisible] = useState(false);
   const [locationMenuVisible, setLocationMenuVisible] = useState(false);
@@ -151,7 +150,6 @@ export default function Appointments() {
         />
       </Animated.View>
 
-      {/* View Appointment Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -201,7 +199,6 @@ export default function Appointments() {
         </View>
       </Modal>
 
-      {/* Request Appointment Modal */}
       <Modal visible={requestModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -211,7 +208,6 @@ export default function Appointments() {
             </View>
 
             <ScrollView style={styles.modalBody}>
-              {/* Doctor Dropdown */}
               <Menu
                 visible={doctorMenuVisible}
                 onDismiss={() => setDoctorMenuVisible(false)}
@@ -238,7 +234,6 @@ export default function Appointments() {
                 ))}
               </Menu>
 
-              {/* Date Picker */}
               <TextInput
                 label="Date"
                 value={newAppointment.date}
@@ -255,7 +250,6 @@ export default function Appointments() {
                 />
               )}
 
-              {/* Time Slot Dropdown */}
               <Menu
                 visible={timeMenuVisible}
                 onDismiss={() => setTimeMenuVisible(false)}
@@ -282,7 +276,6 @@ export default function Appointments() {
                 ))}
               </Menu>
 
-              {/* Location Dropdown */}
               <Menu
                 visible={locationMenuVisible}
                 onDismiss={() => setLocationMenuVisible(false)}
