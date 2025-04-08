@@ -46,10 +46,10 @@ export default function CaretakerDashboard() {
             onPress={() => router.push("/caretaker/Medications")}
           />
           <QuickAccessCard
-            title="Emergency Alerts"
+            title="Emergency Contacts"
             icon="alert-circle"
             color="#FFD54F"
-            onPress={() => router.push("/caretaker/EmergencyAlerts")}
+            onPress={() => router.push("/caretaker/EmergencyContacts")}
           />
           <QuickAccessCard
             title="Prescriptions"
