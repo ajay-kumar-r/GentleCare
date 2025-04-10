@@ -115,7 +115,7 @@ export default function EmergencyContacts() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Emergency Contacts</Text>
+      <Text style={[styles.title, {color: colors.primary}]}>Emergency Contacts</Text>
 
       <FlatList
         data={contacts}
@@ -130,7 +130,6 @@ export default function EmergencyContacts() {
         )}
       />
 
-      {/* Add/Edit Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -162,12 +161,10 @@ export default function EmergencyContacts() {
         </View>
       </Modal>
 
-      {/* FAB */}
       <Animated.View style={[styles.fabContainer, { bottom: fabBottom }]}>
         <FAB icon="plus" style={styles.fab} onPress={() => openModal()} />
       </Animated.View>
 
-      {/* Snackbar */}
       <Snackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}

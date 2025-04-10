@@ -5,7 +5,6 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NotificationItem from "../components/Elder/NotificationItem";
 import { Ionicons } from "@expo/vector-icons";
-import { Swipeable } from "react-native-gesture-handler";
 
 export default function Notifications() {
   const { colors } = useTheme();
@@ -63,19 +62,21 @@ export default function Notifications() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {notifications.length > 0 ? (
           notifications.map((text, index) => (
-            <Swipeable
+            <TouchableOpacity
               key={index}
-              renderRightActions={() => (
-                <TouchableOpacity
-                  onPress={() => deleteNotification(index)}
-                  style={styles.deleteButton}
-                >
-                  <Ionicons name="trash" size={24} color="red" />
-                </TouchableOpacity>
-              )}
+              onLongPress={() => {
+                Alert.alert("Delete", "Are you sure you want to delete this notification?", [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: () => deleteNotification(index),
+                  },
+                ]);
+              }}
             >
               <NotificationItem text={text} />
-            </Swipeable>
+            </TouchableOpacity>
           ))
         ) : (
           <Text style={[styles.noNotifications, { color: colors.text }]}>
@@ -111,12 +112,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Poppins_400Regular",
     marginTop: 50,
-  },
-  deleteButton: {
-    justifyContent: "center",
-    alignItems: "center",
-    width: 60,
-    height: "100%",
-    borderRadius: 10,
   },
 });
