@@ -8,7 +8,6 @@ import {
   Platform,
 } from "react-native";
 import { Text, TextInput, Button, useTheme } from "react-native-paper";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 
 export default function ElderLoginPage() {
@@ -18,18 +17,20 @@ export default function ElderLoginPage() {
   const [password, setPassword] = useState("");
 
   return (
-    <LinearGradient colors={["#4A90E2", "#F5A623"]} style={styles.gradient}>
+    <View style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.container}
+        style={styles.innerContainer}
       >
-        <Image
-          source={require("../../assets/images/elder-icon.png")}
-          style={styles.logo}
-        />
-        <Text style={[styles.title, { color: colors.primary }]}>
-          Elder Login
-        </Text>
+        <Text style={[styles.title, { color: colors.primary }]}>Elder Login</Text>
+
+        <View style={styles.cardContainer}>
+          <Image
+            source={require("../../assets/images/elder-icon.png")}
+            style={styles.logo}
+          />
+        </View>
+
         <TextInput
           label="Email"
           mode="outlined"
@@ -55,14 +56,15 @@ export default function ElderLoginPage() {
         >
           Login
         </Button>
-        <TouchableOpacity>
-          <Text style={[styles.link, { color: colors.primary }]}>
+        <TouchableOpacity onPress={() => router.push("/auth/forgetpsw")}>
+          <Text style={[styles.link, { color: colors.primary, textAlign: "center" }]}>
             Forgot Password?
           </Text>
         </TouchableOpacity>
+
         <View style={styles.registerContainer}>
           <Text style={[styles.registerText, { color: colors.text }]}>
-            New User?
+            New User?{" "}
           </Text>
           <TouchableOpacity onPress={() => router.push("/auth/signup")}>
             <Text style={[styles.registerLink, { color: colors.primary }]}>
@@ -71,24 +73,25 @@ export default function ElderLoginPage() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
   container: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  innerContainer: {
+    width: "80%",
     paddingHorizontal: 20,
   },
   logo: {
     width: 100,
     height: 100,
     marginBottom: 20,
+    alignSelf: "center",
   },
   title: {
     fontSize: 36,
@@ -96,6 +99,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     textTransform: "uppercase",
     letterSpacing: 1.5,
+    textAlign: "center",
   },
   input: {
     width: "100%",
@@ -118,11 +122,12 @@ const styles = StyleSheet.create({
   registerContainer: {
     flexDirection: "row",
     marginTop: 20,
+    justifyContent: "center",
   },
   registerText: {
     fontSize: 18,
     fontFamily: "Poppins_400Regular",
-    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowColor: "rgba(0, 0, 0, 0.9)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
@@ -134,5 +139,10 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+  },
+  cardContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 20,
   },
 });

@@ -1,8 +1,7 @@
-import { View, StyleSheet, TouchableOpacity, Image, Animated } from "react-native";
+import { View, StyleSheet, TouchableOpacity, Image, Animated, Dimensions } from "react-native";
 import { Card, Text, useTheme } from "react-native-paper";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 
 export default function LoginPage() {
   const { colors } = useTheme();
@@ -27,111 +26,76 @@ export default function LoginPage() {
   };
 
   return (
-    <LinearGradient colors={[colors.primary, colors.secondary]} style={styles.gradient}>
-      <View style={styles.container}>
-        <Text style={[styles.title, { color: colors.background }]}>Login</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Image source={require("../../assets/images/caring-hands.png")} style={styles.logo} />
 
-        <View style={styles.cardContainer}>
-          <TouchableOpacity activeOpacity={1} onPress={() => handlePress("elder")}>
-            <Animated.View style={[styles.animatedCard, { transform: [{ scale: elderPressAnim }] }]}>
-              <Card style={styles.card}>
-                <Card.Content style={styles.cardContent}>
-                  <Image source={require("../../assets/images/elder-icon.png")} style={styles.image} />
-                  <Text
-                    style={[
-                      styles.cardText,
-                      {
-                        color: colors.primary,
-                        textShadowColor: "rgba(0, 0, 0, 0.3)",
-                        textShadowOffset: { width: 1, height: 1 },
-                        textShadowRadius: 2,
-                      },
-                    ]}
-                  >
-                    Elder
-                  </Text>
-                </Card.Content>
-              </Card>
-            </Animated.View>
-          </TouchableOpacity>
+      <Text style={[styles.title, { color: colors.primary }]}>Welcome</Text>
+      <Text style={[styles.subtitle, { color: "black" }]}>
+        Choose your role to continue
+      </Text>
 
-          <TouchableOpacity activeOpacity={1} onPress={() => handlePress("caretaker")}>
-            <Animated.View style={[styles.animatedCard, { transform: [{ scale: caretakerPressAnim }] }]}>
-              <Card style={styles.card}>
-                <Card.Content style={styles.cardContent}>
-                  <Image source={require("../../assets/images/caretaker-icon.png")} style={styles.image} />
-                  <Text
-                    style={[
-                      styles.cardText,
-                      {
-                        color: colors.primary,
-                        textShadowColor: "rgba(0, 0, 0, 0.3)",
-                        textShadowOffset: { width: 1, height: 1 },
-                        textShadowRadius: 2,
-                      },
-                    ]}
-                  >
-                    Caretaker
-                  </Text>
-                </Card.Content>
-              </Card>
-            </Animated.View>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.cardContainer}>
+        <TouchableOpacity activeOpacity={1} onPress={() => handlePress("elder")}>
+          <Animated.View style={[styles.animatedCard, { transform: [{ scale: elderPressAnim }] }]}>
+            <Card style={styles.card}>
+              <Card.Content style={styles.cardContent}>
+                <Image source={require("../../assets/images/elder-icon.png")} style={styles.image} />
+                <Text style={[styles.cardText, { color: colors.primary }]}>Elder</Text>
+              </Card.Content>
+            </Card>
+          </Animated.View>
+        </TouchableOpacity>
 
-        <View style={styles.registerContainer}>
-          <Text
-            style={[
-              styles.registerText,
-              {
-                color: colors.text,
-                fontWeight: "bold",
-                textShadowColor: "rgba(0, 0, 0, 0.3)",
-                textShadowOffset: { width: 1, height: 1 },
-                textShadowRadius: 2,
-              },
-            ]}
-          >
-            New User?{" "}
-          </Text>
-          <TouchableOpacity onPress={() => router.push("/auth/signup")}>
-            <Text
-              style={[
-                styles.registerLink,
-                {
-                  color: colors.secondary,
-                  fontWeight: "bold",
-                  textShadowColor: "rgba(0, 0, 0, 0.3)",
-                  textShadowOffset: { width: 1, height: 1 },
-                  textShadowRadius: 2,
-                },
-              ]}
-            >
-              Register Here
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity activeOpacity={1} onPress={() => handlePress("caretaker")}>
+          <Animated.View style={[styles.animatedCard, { transform: [{ scale: caretakerPressAnim }] }]}>
+            <Card style={styles.card}>
+              <Card.Content style={styles.cardContent}>
+                <Image source={require("../../assets/images/caretaker-icon.png")} style={styles.image} />
+                <Text style={[styles.cardText, { color: colors.primary }]}>Caretaker</Text>
+              </Card.Content>
+            </Card>
+          </Animated.View>
+        </TouchableOpacity>
       </View>
-    </LinearGradient>
+
+      <View style={styles.registerContainer}>
+        <Text style={[styles.registerText, { color: colors.text }]}>
+          New User?{" "}
+        </Text>
+        <TouchableOpacity onPress={() => router.push("/auth/signup")}>
+          <Text style={[styles.registerLink, { color: colors.primary }]}>
+            Register Here
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
+const { height } = Dimensions.get("window");
+
 const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    paddingTop: height * 0.08,
     paddingHorizontal: 20,
+    alignItems: "center",
+  },
+  logo: {
+    width: 90,
+    height: 90,
+    resizeMode: "contain",
+    marginBottom: 15,
   },
   title: {
-    fontSize: 36,
+    fontSize: 32,
     fontFamily: "Poppins_700Bold",
-    marginBottom: 30,
-    textTransform: "uppercase",
-    letterSpacing: 2,
+    marginBottom: 5,
+  },
+  subtitle: {
+    fontSize: 18,
+    fontFamily: "Poppins_400Regular",
+    marginBottom: 35,
   },
   cardContainer: {
     flexDirection: "row",
@@ -144,7 +108,7 @@ const styles = StyleSheet.create({
   card: {
     width: 150,
     borderRadius: 15,
-    elevation: 5,
+    elevation: 4,
     backgroundColor: "white",
   },
   cardContent: {
@@ -158,21 +122,24 @@ const styles = StyleSheet.create({
   },
   cardText: {
     fontSize: 20,
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: "Poppins_700Bold",
     textTransform: "capitalize",
   },
   registerContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: 30,
+    marginTop: 40,
   },
   registerText: {
     fontSize: 16,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: "Poppins_700Bold",
+    textShadowColor: "rgba(0, 0, 0, 0.5)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   registerLink: {
     fontSize: 16,
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: "Poppins_700Bold",
     textDecorationLine: "underline",
   },
 });

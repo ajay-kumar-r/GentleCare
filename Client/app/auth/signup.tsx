@@ -7,9 +7,9 @@ import {
   Modal,
   ScrollView,
   Animated,
+  Dimensions,
 } from "react-native";
 import { Card, Text, TextInput, Button, useTheme, IconButton } from "react-native-paper";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 
 export default function SignupPage() {
@@ -32,125 +32,92 @@ export default function SignupPage() {
   };
 
   return (
-    <LinearGradient colors={[colors.primary, colors.secondary]} style={styles.gradient}>
-      <View style={styles.container}>
-        <Text style={[styles.title, 
-          { 
-            color: colors.background 
-          }]}>
-          Sign Up
-        </Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.primary }]}>
+        Sign Up
+      </Text>
 
-        <View style={styles.cardContainer}>
-          <TouchableOpacity activeOpacity={1} 
-          onPress={() => handlePress("elder")}>
-            <Animated.View style={[styles.animatedCard, 
-              { 
-                transform: [{ scale: elderPressAnim }] 
-              }]}>
-              <Card style={styles.card}>
-                <Card.Content style={styles.cardContent}>
-                  <Image source={
-                    require("../../assets/images/elder-icon.png")
-                  } 
-                  style={styles.image} />
-                  <Text style={[styles.cardText, 
-                    { color: colors.primary 
-                      
-                    }]}>Elder</Text>
-                </Card.Content>
-              </Card>
-            </Animated.View>
-          </TouchableOpacity>
+      <Text style={[styles.subtitle, { color: "black" }]}>
+        Choose your role to continue
+      </Text>
 
-          <TouchableOpacity activeOpacity={1} onPress={() => handlePress("caretaker")}>
-            <Animated.View style={[styles.animatedCard, 
-              { 
-                transform: [{ scale: caretakerPressAnim }] 
-              }]}>
-              <Card style={styles.card}>
-                <Card.Content style={styles.cardContent}>
-                  <Image source={require("../../assets/images/caretaker-icon.png")} 
-                  style={styles.image} />
-                  <Text style={[styles.cardText, 
-                    { 
-                      color: colors.primary 
-                    }]}>Caretaker</Text>
-                </Card.Content>
-              </Card>
-            </Animated.View>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.cardContainer}>
+        <TouchableOpacity activeOpacity={1} onPress={() => handlePress("elder")}>
+          <Animated.View style={[styles.animatedCard, { transform: [{ scale: elderPressAnim }] }]}>
+            <Card style={styles.card}>
+              <Card.Content style={styles.cardContent}>
+                <Image source={require("../../assets/images/elder-icon.png")} style={styles.image} />
+                <Text style={[styles.cardText, { color: colors.primary }]}>Elder</Text>
+              </Card.Content>
+            </Card>
+          </Animated.View>
+        </TouchableOpacity>
 
-        <View style={styles.registerContainer}>
-          <Text style={[styles.registerText, 
-            { 
-              color: colors.text 
-              }]}>Already registered? 
-          </Text>
-          <TouchableOpacity onPress={() => router.push("/auth/login")}>
-            <Text style={[styles.registerLink, 
-              { 
-                color: colors.secondary 
-              }]}>Click here</Text>
-          </TouchableOpacity>
-          <Text style={[styles.registerText, 
-            { 
-              color: colors.text 
-            }]}> to login</Text>
-        </View>
-
-        <Modal animationType="fade" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, 
-              { 
-                backgroundColor: colors.background 
-              }]}>
-              <IconButton icon="close" size={28} 
-              iconColor={colors.primary} 
-              style={styles.closeButton} 
-              onPress={() => setModalVisible(false)} />
-              <Text style={[styles.modalTitle, 
-                { 
-                  color: colors.primary 
-                }]}>
-                {selectedRole === "elder" ? "Elder Signup" : "Caretaker Signup"}
-              </Text>
-              <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-                <View style={styles.inputContainer}>
-                  <TextInput label="Full Name" mode="outlined" style={styles.input} theme={{ colors: { primary: colors.primary } }} />
-                  <TextInput label="Email" mode="outlined" keyboardType="email-address" style={styles.input} theme={{ colors: { primary: colors.primary } }} />
-                  <TextInput label="Password" mode="outlined" secureTextEntry style={styles.input} theme={{ colors: { primary: colors.primary } }} />
-                  <TextInput label="Confirm Password" mode="outlined" secureTextEntry style={styles.input} theme={{ colors: { primary: colors.primary } }} />
-                </View>
-                <Button mode="contained" onPress={() => setModalVisible(false)} style={styles.button}>
-                  Register
-                </Button>
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
+        <TouchableOpacity activeOpacity={1} onPress={() => handlePress("caretaker")}>
+          <Animated.View style={[styles.animatedCard, { transform: [{ scale: caretakerPressAnim }] }]}>
+            <Card style={styles.card}>
+              <Card.Content style={styles.cardContent}>
+                <Image source={require("../../assets/images/caretaker-icon.png")} style={styles.image} />
+                <Text style={[styles.cardText, { color: colors.primary }]}>Caretaker</Text>
+              </Card.Content>
+            </Card>
+          </Animated.View>
+        </TouchableOpacity>
       </View>
-    </LinearGradient>
+
+      <View style={styles.registerContainer}>
+        <Text style={[styles.registerText, { color: colors.text }]}>
+          Already registered?{" "}
+        </Text>
+        <TouchableOpacity onPress={() => router.push("/auth/login")}>
+          <Text style={[styles.registerLink, { color: colors.primary }]}>Click here</Text>
+        </TouchableOpacity>
+        <Text style={[styles.registerText, { color: colors.text }]}> to login</Text>
+      </View>
+
+      <Modal animationType="fade" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <IconButton icon="close" size={28} iconColor={colors.primary} style={styles.closeButton} onPress={() => setModalVisible(false)} />
+            <Text style={[styles.modalTitle, { color: colors.primary }]}>
+              {selectedRole === "elder" ? "Elder Signup" : "Caretaker Signup"}
+            </Text>
+            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+              <View style={styles.inputContainer}>
+                <TextInput label="Full Name" mode="outlined" style={styles.input} theme={{ colors: { primary: colors.primary } }} />
+                <TextInput label="Email" mode="outlined" keyboardType="email-address" style={styles.input} theme={{ colors: { primary: colors.primary } }} />
+                <TextInput label="Password" mode="outlined" secureTextEntry style={styles.input} theme={{ colors: { primary: colors.primary } }} />
+                <TextInput label="Confirm Password" mode="outlined" secureTextEntry style={styles.input} theme={{ colors: { primary: colors.primary } }} />
+              </View>
+              <Button mode="contained" onPress={() => setModalVisible(false)} style={styles.button}>
+                Register
+              </Button>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
+const { height } = Dimensions.get("window");
+
 const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    paddingTop: height * 0.08,
     paddingHorizontal: 20,
+    alignItems: "center",
   },
   title: {
-    fontSize: 36,
+    fontSize: 32,
     fontFamily: "Poppins_700Bold",
-    marginBottom: 30,
-    textTransform: "uppercase",
-    letterSpacing: 2,
+    marginBottom: 5,
+  },
+  subtitle: {
+    fontSize: 16,
+    fontFamily: "Poppins_400Regular",
+    marginBottom: 35,
   },
   cardContainer: {
     flexDirection: "row",
@@ -163,8 +130,7 @@ const styles = StyleSheet.create({
   card: {
     width: 150,
     borderRadius: 15,
-    elevation: 0,
-    shadowColor: "transparent",
+    elevation: 4,
     backgroundColor: "white",
   },
   cardContent: {
@@ -178,31 +144,26 @@ const styles = StyleSheet.create({
   },
   cardText: {
     fontSize: 20,
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: "Poppins_700Bold",
     textTransform: "capitalize",
-    textShadowColor: "rgba(0, 0, 0, 0.3)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
   },
   registerContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: 30,
+    marginTop: 40,
+    flexWrap: "wrap",
   },
   registerText: {
     fontSize: 16,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: "Poppins_700Bold",
     textShadowColor: "rgba(0, 0, 0, 0.3)",
-    textShadowOffset: { width: 1, height: 1 },
+    textShadowOffset: { width: 1, height: 0.5 },
     textShadowRadius: 2,
   },
   registerLink: {
     fontSize: 16,
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: "Poppins_700Bold",
     textDecorationLine: "underline",
-    textShadowColor: "rgba(0, 0, 0, 0.3)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
   },
   modalOverlay: {
     flex: 1,
@@ -218,7 +179,7 @@ const styles = StyleSheet.create({
     elevation: 10,
     alignItems: "center",
   },
-  closeButton: {
+  closeButton: {  
     position: "absolute",
     top: 10,
     right: 10,
