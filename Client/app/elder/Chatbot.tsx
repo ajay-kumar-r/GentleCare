@@ -72,7 +72,7 @@ export default function ChatbotVoice() {
         name: "recording.wav",
       });
 
-      const transcribeRes = await fetch("https://78ac-103-186-188-202.ngrok-free.app/transcribe", {
+      const transcribeRes = await fetch("<ngrok link>/transcribe", {
         method: "POST",
         body: formData,
         headers: {
@@ -83,7 +83,7 @@ export default function ChatbotVoice() {
       const transcribeData = await transcribeRes.json();
       const userMessage = transcribeData.transcription;
 
-      const chatRes = await fetch("https://78ac-103-186-188-202.ngrok-free.app/chat", {
+      const chatRes = await fetch("<ngrok link>/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMessage }),
@@ -92,9 +92,9 @@ export default function ChatbotVoice() {
       const chatData = await chatRes.json();
       const botReply = chatData.response;
 
-      setChatbotResponse("You said: " + userMessage + "\n\nBot: " + botReply);
+      setChatbotResponse(botReply);
 
-      const speakRes = await fetch("https://78ac-103-186-188-202.ngrok-free.app/speak", {
+      const speakRes = await fetch("<ngrok link>/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: botReply }),
