@@ -230,6 +230,7 @@ export default function HealthRecords() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 20,
   },
   scrollContent: {
     paddingBottom: 120,
@@ -239,6 +240,9 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontFamily: "Poppins_700Bold",
     marginVertical: 20,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
     textAlign: "center",
   },
   section: {

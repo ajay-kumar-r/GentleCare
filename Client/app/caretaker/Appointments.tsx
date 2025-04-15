@@ -366,6 +366,9 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontFamily: "Poppins_700Bold",
     marginBottom: 20,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
     textAlign: "center",
   },
   scrollContent: {

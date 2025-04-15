@@ -99,6 +99,7 @@ export default function CaretakerDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 40,
   },
   header: {
     flexDirection: "row",

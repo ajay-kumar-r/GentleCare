@@ -177,6 +177,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F5",
+    paddingTop: 20,
   },
   scrollContent: {
     flexGrow: 1,
@@ -185,7 +186,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
+    paddingTop: 10,
+    textAlign: "center",
     fontFamily: "Poppins_700Bold",
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   sectionTitle: {
     fontSize: 18,

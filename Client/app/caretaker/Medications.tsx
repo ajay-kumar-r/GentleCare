@@ -363,6 +363,9 @@ const styles = StyleSheet.create({
   header: {
     fontSize: 24,
     fontFamily: "Poppins_700Bold",
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
     marginBottom: 10,
     textAlign: "center",
   },

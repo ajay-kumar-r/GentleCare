@@ -95,7 +95,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
+    paddingTop: 20,
+    textAlign: "center",
     fontFamily: "Poppins_700Bold",
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
     marginBottom: 10,
   },
   sectionTitle: {
