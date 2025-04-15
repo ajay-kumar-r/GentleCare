@@ -1,84 +1,139 @@
-import React, { useState, useEffect } from "react";
-import { View, StyleSheet, Animated, TouchableOpacity, Text } from "react-native";
+import React, { useState, useRef } from "react";
+import { View, StyleSheet, Animated, TouchableOpacity, Text, ActivityIndicator } from "react-native";
 import { IconButton, useTheme } from "react-native-paper";
-import { useRouter } from "expo-router";
-import AudioRecorderPlayer from "react-native-audio-recorder-player";
+import { Audio } from "expo-av";
+import * as FileSystem from "expo-file-system";
 
 export default function ChatbotVoice() {
   const { colors } = useTheme();
-  const router = useRouter();
-  const [isListening, setIsListening] = useState(false);
-  const [showStopButton, setShowStopButton] = useState(false);
-  const [waveformWidth] = useState(new Animated.Value(0));
-  const [waveforms, setWaveforms] = useState(
-    Array(5).fill(new Animated.Value(1))
-  );
+  const [isRecording, setIsRecording] = useState(false);
+  const [recording, setRecording] = useState(null);
   const [chatbotResponse, setChatbotResponse] = useState("");
-  const [isResponding, setIsResponding] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const waveforms = useRef(Array(5).fill(null).map(() => new Animated.Value(1))).current;
 
-  const audioRecorderPlayer = new AudioRecorderPlayer();
+  const animateWaveform = () => {
+    waveforms.forEach((waveform, i) => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(waveform, {
+            toValue: 1.5 + Math.random(),
+            duration: 300,
+            useNativeDriver: false,
+          }),
+          Animated.timing(waveform, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: false,
+          }),
+        ])
+      ).start();
+    });
+  };
 
-  const handleMicPress = async () => {
-    setIsListening(true);
-    setShowStopButton(true);
-    setChatbotResponse(""); 
-
+  const startRecording = async () => {
     try {
-      await audioRecorderPlayer.startRecorder();
-      audioRecorderPlayer.addRecordBackListener((e) => {
-        const volumeLevel = e.currentPosition / 1000; 
-        updateWaveforms(volumeLevel); 
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        alert("Microphone permission is required!");
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
       });
-    } catch (error) {
-      console.error("Error starting the microphone recording", error);
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      setRecording(recording);
+      setIsRecording(true);
+      setChatbotResponse("");
+      animateWaveform();
+    } catch (err) {
+      console.error("Failed to start recording", err);
     }
   };
 
-  const handleStopPress = async () => {
-    setIsListening(false);
-    setShowStopButton(false);
+  const stopRecording = async () => {
+    setIsRecording(false);
+    setLoading(true);
 
-    audioRecorderPlayer.stopRecorder();
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
 
-    Animated.timing(waveformWidth, {
-      toValue: 0,
-      duration: 2000,
-      useNativeDriver: false,
-    }).start();
+      const formData = new FormData();
+      formData.append("file", {
+        uri,
+        type: "audio/wav",
+        name: "recording.wav",
+      });
 
-    setTimeout(() => {
-      setIsResponding(true);
-      setChatbotResponse("This is the chatbot's response based on your voice input.");
-    }, 2000);
-  };
+      const transcribeRes = await fetch("https://78ac-103-186-188-202.ngrok-free.app/transcribe", {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
-  const updateWaveforms = (volumeLevel: number) => {
-    setWaveforms((prevWaveforms) =>
-      prevWaveforms.map((waveform, index) => {
-        const scale = Math.min(1 + volumeLevel * (index + 1), 2);  level
-        return Animated.timing(waveform, {
-          toValue: scale,
-          duration: 100,
-          useNativeDriver: false,
+      const transcribeData = await transcribeRes.json();
+      const userMessage = transcribeData.transcription;
+
+      const chatRes = await fetch("https://78ac-103-186-188-202.ngrok-free.app/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMessage }),
+      });
+
+      const chatData = await chatRes.json();
+      const botReply = chatData.response;
+
+      setChatbotResponse("You said: " + userMessage + "\n\nBot: " + botReply);
+
+      const speakRes = await fetch("https://78ac-103-186-188-202.ngrok-free.app/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: botReply }),
+      });
+
+      const audioBlob = await speakRes.blob();
+      const reader = new FileReader();
+
+      reader.onloadend = async () => {
+        const base64data = reader.result.split(",")[1];
+        const fileUri = FileSystem.documentDirectory + "bot-response.wav";
+
+        await FileSystem.writeAsStringAsync(fileUri, base64data, {
+          encoding: FileSystem.EncodingType.Base64,
         });
-      })
-    );
+
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: fileUri },
+          { shouldPlay: true }
+        );
+
+        await sound.playAsync();
+      };
+
+      reader.readAsDataURL(audioBlob);
+    } catch (err) {
+      console.error("Voice interaction failed:", err);
+    } finally {
+      setRecording(null);
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.mainContent}>
-        {!isListening ? (
-          <TouchableOpacity
-            style={styles.micContainer}
-            onPress={handleMicPress}
-          >
-            <IconButton
-              icon="microphone"
-              size={80}
-              color={colors.primary}
-              style={styles.micIcon}
-            />
+        {!isRecording ? (
+          <TouchableOpacity style={styles.micContainer} onPress={startRecording} disabled={loading}>
+            <IconButton icon="microphone" size={80} color={colors.primary} style={styles.micIcon} />
           </TouchableOpacity>
         ) : (
           <View style={styles.waveformContainer}>
@@ -92,16 +147,20 @@ export default function ChatbotVoice() {
         )}
       </View>
 
-      {showStopButton && (
-        <TouchableOpacity
-          style={styles.stopButton}
-          onPress={handleStopPress}
-        >
+      {isRecording && (
+        <TouchableOpacity style={styles.stopButton} onPress={stopRecording}>
           <Text style={styles.stopButtonText}>Stop</Text>
         </TouchableOpacity>
       )}
 
-      {isResponding && (
+      {loading && (
+        <View style={{ marginTop: 20 }}>
+          <ActivityIndicator size="small" color="#555" />
+          <Text style={{ marginTop: 5 }}>Processing...</Text>
+        </View>
+      )}
+
+      {chatbotResponse !== "" && (
         <View style={styles.responseContainer}>
           <Text style={styles.chatbotResponseText}>{chatbotResponse}</Text>
         </View>
@@ -140,6 +199,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-evenly",
     alignItems: "flex-end",
     width: "80%",
+    height: 100,
   },
   waveform: {
     height: 5,

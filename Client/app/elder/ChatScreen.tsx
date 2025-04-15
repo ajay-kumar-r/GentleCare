@@ -1,24 +1,136 @@
-import { View, StyleSheet, FlatList, TextInput, KeyboardAvoidingView, Platform } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { 
+  View, 
+  StyleSheet, 
+  FlatList, 
+  TextInput, 
+  KeyboardAvoidingView, 
+  Platform,
+  ActivityIndicator
+} from "react-native";
 import { Text, IconButton, useTheme, Avatar } from "react-native-paper";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { Audio } from "expo-av";
+import * as FileSystem from "expo-file-system";
+
+// Replace with your actual API URL
+const API_URL = "https://78ac-103-186-188-202.ngrok-free.app";
 
 export default function ChatScreen() {
   const { name } = useLocalSearchParams();
   const router = useRouter();
   const { colors } = useTheme();
+  const soundObject = useRef(new Audio.Sound()).current;
 
   const [messages, setMessages] = useState([
     { id: 1, sender: "peer", text: "Hi! How are you today?" },
-    { id: 2, sender: "me", text: "I'm doing well, thank you!" },
   ]);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const flatListRef = useRef(null);
 
-  const handleSend = () => {
+  useEffect(() => {
+    return () => {
+      if (soundObject) {
+        soundObject.unloadAsync();
+      }
+    };
+  }, []);
+
+  const scrollToBottom = () => {
+    if (flatListRef.current && messages.length > 0) {
+      flatListRef.current.scrollToEnd({ animated: true });
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSend = async () => {
     if (input.trim() === "") return;
-    const newMessage = { id: Date.now(), sender: "me", text: input };
-    setMessages([...messages, newMessage]);
+    
+    // Add user message to UI
+    const userMessage = { id: Date.now(), sender: "me", text: input };
+    setMessages(prev => [...prev, userMessage]);
+    
+    const userInput = input;
     setInput("");
+    setIsLoading(true);
+    
+    try {
+      // Get chatbot response
+      const response = await fetch(`${API_URL}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: userInput }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Add bot response to UI
+      const botMessage = { id: Date.now() + 1, sender: "peer", text: data.response };
+      setMessages(prev => [...prev, botMessage]);
+      
+      // Get audio for the response
+      await speakResponse(data.response);
+      
+    } catch (error) {
+      console.error("Error getting response:", error);
+      const errorMessage = { 
+        id: Date.now() + 1, 
+        sender: "peer", 
+        text: "Sorry, I couldn't process your request. Please try again." 
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const speakResponse = async (text) => {
+    try {
+      // Get speech audio from API
+      const response = await fetch(`${API_URL}/speak`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      // Get audio blob and write to file
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      reader.onload = async () => {
+        const base64data = reader.result.split(',')[1];
+        const audioPath = `${FileSystem.documentDirectory}response.wav`;
+        
+        await FileSystem.writeAsStringAsync(audioPath, base64data, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        
+        // Play the audio
+        await soundObject.loadAsync({ uri: audioPath });
+        await soundObject.playAsync();
+      };
+      
+      reader.readAsDataURL(blob);
+    } catch (error) {
+      console.error("Speech synthesis error:", error);
+    }
   };
 
   return (
@@ -34,9 +146,11 @@ export default function ChatScreen() {
       </View>
 
       <FlatList
+        ref={flatListRef}
         data={messages}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.messageContainer}
+        onLayout={scrollToBottom}
         renderItem={({ item }) => (
           <View
             style={[
@@ -49,14 +163,28 @@ export default function ChatScreen() {
         )}
       />
 
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={styles.loadingText}>Thinking...</Text>
+        </View>
+      )}
+
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
           placeholder="Type your message..."
           value={input}
           onChangeText={setInput}
+          multiline
+          maxLength={500}
         />
-        <IconButton icon="send" onPress={handleSend} iconColor={colors.primary} />
+        <IconButton 
+          icon="send" 
+          onPress={handleSend} 
+          iconColor={colors.primary}
+          disabled={input.trim() === "" || isLoading}
+        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -71,8 +199,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 10,
-    paddingTop: 40,
     elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   avatar: {
     marginLeft: 5,
@@ -90,9 +221,14 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     maxWidth: "75%",
-    padding: 10,
+    padding: 12,
     marginVertical: 5,
-    borderRadius: 10,
+    borderRadius: 16,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
   myMessage: {
     alignSelf: "flex-end",
@@ -120,5 +256,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#F0F0F0",
     fontSize: 16,
     marginRight: 5,
+    maxHeight: 120,
   },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 8,
+  },
+  loadingText: {
+    marginLeft: 8,
+    color: "#666",
+    fontSize: 14,
+  }
 });

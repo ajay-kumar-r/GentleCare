@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "gentecare",
+  "private_key_id": "c5d5a11b69159844b59b0ecfe213eeb66a76a252",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCno1xD1AyTEjRU\n2wG+X06imeUVw3htW7UtmFkO3ncLD8XcUBhhMnWI9SkO5M2JBOcQjCqpA4ITYQwc\ny2N4mZEbjFpMQdCdD/dGzRx3VyH+CQHeBDUFYaY5wGX4DuxU/G0p14BaP2ZGZWz0\nXTy/pwoLWpWm620XrWMPub2SEqTsuawFOD4B7U0FlDjdqzqufjWysDweBzQrXbvA\nc4tAtOiACzPShmmkLQp93HC6t0AWj7u23JvMIU4HcEYf2yx6Bk4G9yLn8Ia/8z+W\n8ayVK1gjTiel2m86jUKmfFFBWmdh2IpJNGfjPRe8iQm4CUuE7/sL/VnsFIlDgQR1\n7lA2P2KhAgMBAAECggEABVEOh44tmep9Y2WQwBdouIp19AM/igRbEiefR3PxxZWJ\n+mtF4qtFhAL2euTxydMwettfLP4R/YhZ6H3g2T3RltSUNo/tzFVpy8KMkRJf3x0t\nBHwQrGuE6Jb8BOqAP0/ELIwLo5EYLspfsr5UQ2XKUULdtS4JRzN2DVUgOIZD2cga\nkMJYra+4OkNQAg6LojCrYBo2OhK4LPlc/t5yY9Aj4k+OPfkDn3VXacs3uatHPubY\n40UKlqsEM4+Wim8TdP59q0p+5+dUSy+FUOfEEswR0Oe8TvN5IuwiU091kKThqUlN\nSa1AJq4db/vZYGFad/3oD7wxWcVAKNF0Rmk6T5IC4wKBgQDXFOlBk6NFqxqebe1u\nwWzInk+w48OMFgnPRvxoYmObaqsaUqsOzbx6xz+qqUBhfX3bfDYp8ScECB15xJ2y\ndYgkDB9e3LEytTV2zlqc1oAayu6yfnH39daQHunUTry0ml/ydvMvjSJaSGWFKcTx\nkLL4JeaCLTzicLmQ9wVemGdNQwKBgQDHh9Ax0bJMkyBWGHjM4eJeY69kFl46z7wA\npSJ9TTmBfx7geF+vRWqaiQZiz4I2FcOBvx+oRNNif3EVoyeRCnkIUiWk1XThjrx9\nqVuDc4Uq35o+MvNymdl2D+Gy8XPYkgWMD8V1rnFvK2+HPLP1SP3h33fyyO30CjCP\nx2SDaHlASwKBgCmEvN5OzKbHN9U7bSkDJ6e2f7Wq0fW5z1z23ASecZHvzmW/bYvn\nBSpCSjT8hRQMsH3tBVulVJ2/n0kBPlvTulsTB/885Ovf9RkhDnbWJVaGs/s6029F\nQo0BmqvEI0NNxZW9hoY4XVhGP2qsPHtRLmsejde1OdqQXhHwzVWMX+yXAoGBAIhf\nErR6FdqwU9GEOEwPtp+8kgteHlkj0eK++quZNEyFjZztqLgqQYoNTQgLu3srtMvg\nzMo9ABy57ZhUQp6nAcHmI0Rdf90JqVpZfeqB8eozmUAZoroY3MAMar3auMq0QoZP\n4S1lZLIOhdNwca6bjKnsChctrTS2IiqipNgLd5OxAoGAY/hN7eeWF9w/bPq6KUYE\nWm4H5l+IBve0G9qZqhTooawRW6YsSnToAsaJZ5tA1a5GXP9sHV6Q7vG5vMbGL9S9\n+c/fkfHDcI241n14ojHczjdyoUPhYylOt9YCsnw8kKj1abnVoA8eCC1k7KavmYVj\nVjqk+sx2fQpTBQOCEx/s5IA=\n-----END PRIVATE KEY-----\n",
+  "client_email": "gentlecare@gentecare.iam.gserviceaccount.com",
+  "client_id": "109972564021300920635",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/gentlecare%40gentecare.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
