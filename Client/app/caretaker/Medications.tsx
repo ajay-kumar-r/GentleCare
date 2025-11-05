@@ -9,15 +9,16 @@ import {
 } from "react-native";
 import {
   Text,
-  Card,
   Button,
   IconButton,
   TextInput,
   FAB,
-  Snackbar,
   useTheme,
 } from "react-native-paper";
 import { Calendar } from "react-native-calendars";
+import CustomCard from "../components/CustomCard";
+import CustomSnackbar from "../components/CustomSnackbar";
+import BackButton from "../components/BackButton";
 
 export default function Medications() {
   const { colors } = useTheme();
@@ -155,6 +156,7 @@ export default function Medications() {
 
   return (
     <View style={styles.container}>
+      <BackButton />
       <Text style={[styles.header, {color: colors.primary}]}>Medications</Text>
 
       <Calendar
@@ -174,19 +176,19 @@ export default function Medications() {
           <Text style={styles.noMedsText}>No medications for this day.</Text>
         ) : (
           medsForSelectedDate.map((med) => (
-            <Card key={med.id} style={styles.card} mode="outlined">
-              <Card.Content>
+            <CustomCard key={med.id} style={styles.card}>
+              <View>
                 <Text variant="titleMedium">{med.name}</Text>
                 <Text>Dosage: {med.dosage}</Text>
                 <Text>Time: {med.time}</Text>
                 <Text>Missed: {med.missed ? "Yes" : "No"}</Text>
-              </Card.Content>
-              <Card.Actions>
+              </View>
+              <View style={styles.cardActions}>
                 <Button mode="contained" onPress={() => handleViewDetails(med)}>
                   View Details
                 </Button>
-              </Card.Actions>
-            </Card>
+              </View>
+            </CustomCard>
           ))
         )}
       </ScrollView>
@@ -342,7 +344,7 @@ export default function Medications() {
         />
       </Animated.View>
 
-      <Snackbar
+      <CustomSnackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
         duration={2500}
@@ -353,7 +355,7 @@ export default function Medications() {
         }}
       >
         {snackbarMsg}
-      </Snackbar>
+      </CustomSnackbar>
     </View>
   );
 }
@@ -387,6 +389,11 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: 16,
+  },
+  cardActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingTop: 8,
   },
   modalOverlay: {
     flex: 1,

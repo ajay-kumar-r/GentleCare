@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NotificationItem from "../components/Elder/NotificationItem";
 import { Ionicons } from "@expo/vector-icons";
+import BackButton from "../components/BackButton";
 
 export default function Notifications() {
   const { colors } = useTheme();
@@ -47,10 +48,9 @@ export default function Notifications() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <BackButton />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={28} color={colors.primary} />
-        </TouchableOpacity>
+        <View style={{ width: 28 }} />
         <Text style={[styles.headerTitle, { color: colors.primary }]}>Notifications</Text>
         {notifications.length > 0 && (
           <TouchableOpacity onPress={clearAllNotifications}>

@@ -1,5 +1,5 @@
 import { View, StyleSheet, TouchableOpacity, Image, Animated, Dimensions } from "react-native";
-import { Card, Text, useTheme } from "react-native-paper";
+import { Text, useTheme } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { useRef } from "react";
 
@@ -37,29 +37,29 @@ export default function LoginPage() {
       <View style={styles.cardContainer}>
         <TouchableOpacity activeOpacity={1} onPress={() => handlePress("elder")}>
           <Animated.View style={[styles.animatedCard, { transform: [{ scale: elderPressAnim }] }]}>
-            <Card style={styles.card}>
-              <Card.Content style={styles.cardContent}>
+            <View style={styles.card}>
+              <View style={styles.cardContent}>
                 <Image source={require("../../assets/images/elder-icon.png")} style={styles.image} />
                 <Text style={[styles.cardText, { color: colors.primary }]}>Elder</Text>
-              </Card.Content>
-            </Card>
+              </View>
+            </View>
           </Animated.View>
         </TouchableOpacity>
 
         <TouchableOpacity activeOpacity={1} onPress={() => handlePress("caretaker")}>
           <Animated.View style={[styles.animatedCard, { transform: [{ scale: caretakerPressAnim }] }]}>
-            <Card style={styles.card}>
-              <Card.Content style={styles.cardContent}>
+            <View style={styles.card}>
+              <View style={styles.cardContent}>
                 <Image source={require("../../assets/images/caretaker-icon.png")} style={styles.image} />
                 <Text style={[styles.cardText, { color: colors.primary }]}>Caretaker</Text>
-              </Card.Content>
-            </Card>
+              </View>
+            </View>
           </Animated.View>
         </TouchableOpacity>
       </View>
 
       <View style={styles.registerContainer}>
-        <Text style={[styles.registerText, { color: colors.text }]}>
+  <Text style={[styles.registerText, { color: (colors as any).onBackground || colors.primary }]}> 
           New User?{" "}
         </Text>
         <TouchableOpacity onPress={() => router.push("/auth/signup")}>

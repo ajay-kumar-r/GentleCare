@@ -1,5 +1,6 @@
 import { View, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { Text, Avatar, useTheme, Card } from "react-native-paper";
+import { Text, Avatar, useTheme } from "react-native-paper";
+import CustomCard from "../components/CustomCard";
 import { useRouter } from "expo-router";
 import QuickAccessCard from "../components/Elder/QuickAccessCard";
 import NotificationItem from "../components/Elder/NotificationItem";
@@ -64,7 +65,7 @@ export default function ElderDashboard() {
           </TouchableOpacity>
         </View>
 
-        <Card style={styles.notificationsCard}>
+        <CustomCard style={styles.notificationsCard}>
           <View style={styles.notificationsListContainer}>
             <ScrollView
               style={styles.notificationsList}
@@ -77,7 +78,7 @@ export default function ElderDashboard() {
               ))}
             </ScrollView>
           </View>
-        </Card>
+  </CustomCard>
       </ScrollView>
 
       <TouchableOpacity style={styles.chatbotButton} onPress={() => router.push("/elder/Chatbot")}>

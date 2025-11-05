@@ -1,6 +1,7 @@
 import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { Text, TextInput, Button, useTheme } from "react-native-paper";
 import { useRouter } from "expo-router";
+import BackButton from "../components/BackButton";
 
 export default function CaretakerLogin() {
   const { colors } = useTheme();
@@ -8,6 +9,7 @@ export default function CaretakerLogin() {
 
   return (
     <View style={styles.container}>
+      <BackButton />
       <Text style={[styles.title, { color: colors.primary }]}>Caretaker Login</Text>
 
       <View style={styles.inputContainer}>

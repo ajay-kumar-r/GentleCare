@@ -14,10 +14,11 @@ import {
   Button,
   IconButton,
   FAB,
-  Snackbar,
   useTheme,
 } from "react-native-paper";
 import EmergencyContactItem from "../components/Caretaker/EmergencyContactItem";
+import CustomSnackbar from "../components/CustomSnackbar";
+import BackButton from "../components/BackButton";
 
 export default function EmergencyContacts() {
   const { colors } = useTheme();
@@ -115,6 +116,7 @@ export default function EmergencyContacts() {
 
   return (
     <View style={styles.container}>
+      <BackButton />
       <Text style={[styles.title, {color: colors.primary}]}>Emergency Contacts</Text>
 
       <FlatList
@@ -165,7 +167,7 @@ export default function EmergencyContacts() {
         <FAB icon="plus" style={styles.fab} onPress={() => openModal()} />
       </Animated.View>
 
-      <Snackbar
+      <CustomSnackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
         action={
@@ -180,7 +182,7 @@ export default function EmergencyContacts() {
         style={styles.snackbar}
       >
         {snackbarMsg}
-      </Snackbar>
+      </CustomSnackbar>
     </View>
   );
 }

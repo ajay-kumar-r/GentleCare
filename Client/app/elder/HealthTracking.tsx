@@ -2,12 +2,14 @@ import { View, ScrollView, StyleSheet } from "react-native";
 import { Text, useTheme } from "react-native-paper";
 import HealthCard from "../components/Elder/HealthCard";
 import HealthChart from "../components/Elder/HealthChart";
+import BackButton from "../components/BackButton";
 
 export default function HealthTracking() {
   const { colors } = useTheme();
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
+      <BackButton />
       <View style={styles.container}>
         <Text style={[styles.title, { color: colors.primary }]}>Health Tracking</Text>
 

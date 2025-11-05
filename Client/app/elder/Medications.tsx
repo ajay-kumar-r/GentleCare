@@ -8,15 +8,16 @@ import {
 } from "react-native";
 import {
   Text,
-  Card,
   Button,
   IconButton,
   TextInput,
   FAB,
-  Snackbar,
   useTheme,
 } from "react-native-paper";
 import { Calendar } from "react-native-calendars";
+import CustomCard from "../components/CustomCard";
+import BackButton from "../components/BackButton";
+import CustomSnackbar from "../components/CustomSnackbar";
 
 const initialMedications = {
   "2025-04-07": [
@@ -88,6 +89,7 @@ export default function Medications() {
 
   return (
     <View style={styles.container}>
+      <BackButton />
       <Text style={[styles.header, { color: colors.primary }]}>Medications</Text>
 
       <Calendar
@@ -106,9 +108,9 @@ export default function Medications() {
         {medsForSelectedDate.length === 0 ? (
           <Text style={styles.noMedsText}>No medications for this day.</Text>
         ) : (
-          medsForSelectedDate.map((med) => (
-            <Card key={med.id} style={styles.card} mode="outlined">
-              <Card.Content>
+          medsForSelectedDate.map((med: any) => (
+            <CustomCard key={med.id} style={styles.card}>
+              <View>
                 <Text variant="titleMedium">{med.name}</Text>
                 <Text>Dosage: {med.dosage}</Text>
                 <Text>Time: {med.time}</Text>
@@ -130,8 +132,8 @@ export default function Medications() {
                     {med.status === "skipped" ? "Skipped ❌" : "Skip"}
                   </Button>
                 </View>
-              </Card.Content>
-            </Card>
+              </View>
+            </CustomCard>
           ))
         )}
       </ScrollView>
@@ -144,7 +146,7 @@ export default function Medications() {
         />
       </Animated.View>
 
-      <Snackbar
+      <CustomSnackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
         duration={2500}
@@ -155,7 +157,7 @@ export default function Medications() {
         }}
       >
         {snackbarMsg}
-      </Snackbar>
+      </CustomSnackbar>
     </View>
   );
 }

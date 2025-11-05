@@ -1,3 +1,4 @@
+import 'use-latest-callback';
 import {
   useFonts,
   Poppins_700Bold,

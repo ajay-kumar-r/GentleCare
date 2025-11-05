@@ -8,17 +8,18 @@ import {
   Platform,
 } from "react-native";
 import {
-  Card,
   Text,
   Button,
   useTheme,
   IconButton,
   FAB,
   TextInput,
-  Snackbar,
   Menu,
 } from "react-native-paper";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import CustomSnackbar from "../components/CustomSnackbar";
+import CustomCard from "../components/CustomCard";
+import BackButton from "../components/BackButton";
 
 export default function Appointments() {
   const { colors } = useTheme();
@@ -121,24 +122,25 @@ export default function Appointments() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <BackButton />
       <Text style={[styles.header, { color: colors.primary }]}>Appointments</Text>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={true}>
         {appointments.map((item) => (
-          <Card key={item.id} style={styles.card} mode="outlined">
-            <Card.Content>
+          <CustomCard key={item.id} style={styles.card}>
+            <View>
               <Text variant="titleMedium">{item.doctor}</Text>
               <Text>Date: {item.date}</Text>
               <Text>Time: {item.time}</Text>
               <Text>Location: {item.location}</Text>
               <Text>Purpose: {item.purpose}</Text>
-            </Card.Content>
-            <Card.Actions>
+            </View>
+            <View style={styles.cardActions}>
               <Button mode="contained" onPress={() => handleViewDetails(item)}>
                 View Details
               </Button>
-            </Card.Actions>
-          </Card>
+            </View>
+          </CustomCard>
         ))}
       </ScrollView>
 
@@ -344,14 +346,14 @@ export default function Appointments() {
         </View>
       </Modal>
 
-      <Snackbar
+      <CustomSnackbar
         visible={snackbarVisible}
         style={{ backgroundColor: "#4CAF50" }}
         onDismiss={() => setSnackbarVisible(false)}
         duration={3000}
       >
         Appointment requested successfully!
-      </Snackbar>
+      </CustomSnackbar>
     </View>
   );
 }
@@ -378,6 +380,11 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: 16,
+  },
+  cardActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingTop: 8,
   },
   fabContainer: {
     position: "absolute",

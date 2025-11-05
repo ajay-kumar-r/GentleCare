@@ -10,17 +10,18 @@ import {
   Alert,
 } from "react-native";
 import {
-  Card,
   Text,
   TextInput,
   Button,
   IconButton,
   useTheme,
-  Snackbar,
   FAB,
 } from "react-native-paper";
+import CustomSnackbar from "../components/CustomSnackbar";
 import * as ImagePicker from "expo-image-picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import CustomCard from "../components/CustomCard";
+import BackButton from "../components/BackButton";
 
 export default function Prescriptions() {
   const { colors } = useTheme();
@@ -140,6 +141,7 @@ export default function Prescriptions() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <BackButton />
       <Text style={[styles.header, { color: colors.primary }]}>Prescriptions</Text>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -156,8 +158,8 @@ export default function Prescriptions() {
                   onLongPress={() => handleDelete(item.id)}
                   delayLongPress={400}
                 >
-                  <Card style={styles.card} mode="outlined">
-                    <Card.Content>
+                  <CustomCard style={styles.card}>
+                    <View>
                       <View
                         style={{
                           flexDirection: "row",
@@ -182,8 +184,8 @@ export default function Prescriptions() {
                       {item.image && (
                         <Image source={{ uri: item.image }} style={styles.image} />
                       )}
-                    </Card.Content>
-                  </Card>
+                    </View>
+                  </CustomCard>
                 </TouchableOpacity>
               ))}
             </View>
@@ -271,14 +273,14 @@ export default function Prescriptions() {
         </View>
       </Modal>
 
-      <Snackbar
+      <CustomSnackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
         duration={3000}
         style={{ backgroundColor: "#4CAF50" }}
       >
         Prescription {editingId ? "updated" : "added"} successfully!
-      </Snackbar>
+      </CustomSnackbar>
     </View>
   );
 }

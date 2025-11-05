@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, Text as RNText, TouchableOpacity } from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import { Card, Text, useTheme, Avatar, Divider } from "react-native-paper";
+import { Text, useTheme, Avatar, Divider } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
+import CustomCard from "../components/CustomCard";
+import BackButton from "../components/BackButton";
 
 export default function LocationTracker() {
   const { colors } = useTheme();
@@ -55,21 +57,24 @@ export default function LocationTracker() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <BackButton />
       <Text style={[styles.header, { color: colors.primary }]}>
         Elder Location Tracker
       </Text>
 
-      <Card style={styles.card} mode="outlined">
-        <Card.Title
-          title="Ravi Sharma"
-          subtitle={`Movement: ${movementStatus}`}
-          left={(props) => <Avatar.Icon {...props} icon="account" />}
-        />
+      <CustomCard style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Avatar.Icon size={40} icon="account" />
+          <View style={styles.cardHeaderText}>
+            <Text style={styles.cardTitle}>Ravi Sharma</Text>
+            <Text style={styles.cardSubtitle}>Movement: {movementStatus}</Text>
+          </View>
+        </View>
         <Divider />
-        <Card.Content>
+        <View style={styles.cardContentPadding}>
           <Text>Last Updated: {formatTime(lastUpdated)}</Text>
-        </Card.Content>
-      </Card>
+        </View>
+      </CustomCard>
 
       <View style={[styles.mapContainer, mapExpanded && styles.mapContainerExpanded]}>
         <MapView
@@ -119,6 +124,26 @@ const styles = StyleSheet.create({
   card: {
     marginHorizontal: 16,
     marginBottom: 12,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8,
+  },
+  cardHeaderText: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    color: "#666",
+  },
+  cardContentPadding: {
+    paddingTop: 8,
   },
   mapContainer: {
     height: 250,

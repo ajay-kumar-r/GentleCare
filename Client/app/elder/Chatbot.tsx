@@ -1,13 +1,47 @@
 import React, { useState, useRef } from "react";
 import { View, StyleSheet, Animated, TouchableOpacity, Text, ActivityIndicator } from "react-native";
 import { IconButton, useTheme } from "react-native-paper";
+import { 
+  useAudioRecorder, 
+  AudioModule,
+  AndroidOutputFormat,
+  AndroidAudioEncoder,
+  AudioQuality,
+  BitRateStrategy
+} from "expo-audio";
 import { Audio } from "expo-av";
 import * as FileSystem from "expo-file-system";
+import BackButton from "../components/BackButton";
+
+// Use your Mac's local IP address so the mobile device can reach the server
+const API_URL = "http://10.11.150.250:5001";
 
 export default function ChatbotVoice() {
   const { colors } = useTheme();
+  const audioRecorder = useAudioRecorder(
+    {
+      extension: ".m4a",
+      sampleRate: 44100,
+      numberOfChannels: 1,
+      bitRate: 128000,
+      android: {
+        extension: ".m4a",
+        outputFormat: "mpeg4",
+        audioEncoder: "aac",
+        sampleRate: 44100,
+      },
+      ios: {
+        extension: ".m4a",
+        audioQuality: 0x7F, // High quality (127)
+        sampleRate: 44100,
+        linearPCMBitDepth: 16,
+        linearPCMIsBigEndian: false,
+        linearPCMIsFloat: false,
+      },
+      web: {},
+    }
+  );
   const [isRecording, setIsRecording] = useState(false);
-  const [recording, setRecording] = useState(null);
   const [chatbotResponse, setChatbotResponse] = useState("");
   const [loading, setLoading] = useState(false);
   const waveforms = useRef(Array(5).fill(null).map(() => new Animated.Value(1))).current;
@@ -33,22 +67,25 @@ export default function ChatbotVoice() {
 
   const startRecording = async () => {
     try {
-      const permission = await Audio.requestPermissionsAsync();
+      const permission = await AudioModule.requestRecordingPermissionsAsync();
       if (!permission.granted) {
         alert("Microphone permission is required!");
         return;
       }
 
+      // Set audio mode to allow recording on iOS using both APIs
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
       });
 
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      // Also set audio mode using AudioModule for expo-audio
+      await AudioModule.setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+      });
 
-      setRecording(recording);
+      await audioRecorder.record();
       setIsRecording(true);
       setChatbotResponse("");
       animateWaveform();
@@ -62,28 +99,48 @@ export default function ChatbotVoice() {
     setLoading(true);
 
     try {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
+      // Get the recording URI before stopping
+      const tempUri = audioRecorder.uri;
+      console.log("Recording URI before stop:", tempUri);
+      
+      if (!tempUri) {
+        throw new Error("No recording URI - recording may not have started properly");
+      }
 
-      const formData = new FormData();
-      formData.append("file", {
-        uri,
-        type: "audio/wav",
-        name: "recording.wav",
+      // Read the file using FileSystem BEFORE stopping
+      const base64Audio = await FileSystem.readAsStringAsync(tempUri, {
+        encoding: "base64",
       });
+      console.log("Recording read, size:", base64Audio.length, "chars");
+      
+      // Stop recording AFTER we've read the file
+      await audioRecorder.stop();
+      
+      console.log("Recording stopped successfully");
 
-      const transcribeRes = await fetch("<ngrok link>/transcribe", {
+      // Convert base64 to blob for upload
+      const byteCharacters = atob(base64Audio);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: "audio/m4a" });
+
+      // Create form data for upload with the blob
+      const formData = new FormData();
+      formData.append("file", blob, "recording.m4a");
+
+      const transcribeRes = await fetch(`${API_URL}/transcribe`, {
         method: "POST",
         body: formData,
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        // Don't set Content-Type header - let the browser set it with boundary
       });
 
       const transcribeData = await transcribeRes.json();
       const userMessage = transcribeData.transcription;
 
-      const chatRes = await fetch("<ngrok link>/chat", {
+      const chatRes = await fetch(`${API_URL}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMessage }),
@@ -94,46 +151,46 @@ export default function ChatbotVoice() {
 
       setChatbotResponse(botReply);
 
-      const speakRes = await fetch("<ngrok link>/speak", {
+      const speakRes = await fetch(`${API_URL}/speak`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: botReply }),
       });
 
+      // Get audio blob and convert to playable format
       const audioBlob = await speakRes.blob();
-      const reader = new FileReader();
+      
+      // Create a blob URL (works on web and mobile)
+      const blobUrl = URL.createObjectURL(audioBlob);
+      
+      // Play the audio directly from the blob URL
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: blobUrl },
+        { shouldPlay: true }
+      );
 
-      reader.onloadend = async () => {
-        const base64data = reader.result.split(",")[1];
-        const fileUri = FileSystem.documentDirectory + "bot-response.wav";
-
-        await FileSystem.writeAsStringAsync(fileUri, base64data, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: fileUri },
-          { shouldPlay: true }
-        );
-
-        await sound.playAsync();
-      };
-
-      reader.readAsDataURL(audioBlob);
+      await sound.playAsync();
+      
+      // Clean up the blob URL after playing
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          URL.revokeObjectURL(blobUrl);
+        }
+      });
     } catch (err) {
       console.error("Voice interaction failed:", err);
     } finally {
-      setRecording(null);
       setLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
+      <BackButton />
       <View style={styles.mainContent}>
         {!isRecording ? (
           <TouchableOpacity style={styles.micContainer} onPress={startRecording} disabled={loading}>
-            <IconButton icon="microphone" size={80} color={colors.primary} style={styles.micIcon} />
+            <IconButton icon="microphone" size={80} iconColor={colors.primary} style={styles.micIcon} />
           </TouchableOpacity>
         ) : (
           <View style={styles.waveformContainer}>

@@ -9,8 +9,11 @@ import {
   Platform,
   Alert,
 } from "react-native";
-import { Text, useTheme, Card, FAB, Button, Snackbar } from "react-native-paper";
+import { Text, useTheme, FAB, Button } from "react-native-paper";
+import CustomSnackbar from "../components/CustomSnackbar";
 import { useRouter } from "expo-router";
+import CustomCard from "../components/CustomCard";
+import BackButton from "../components/BackButton";
 import * as DocumentPicker from "expo-document-picker";
 import { useState } from "react";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -128,6 +131,7 @@ export default function HealthRecords() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <BackButton />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={true}>
         <Text style={[styles.header, { color: colors.primary }]}>Health Records</Text>
 
@@ -154,12 +158,12 @@ export default function HealthRecords() {
                   }}
                   onLongPress={() => handleLongPress(date, report.id)}
                 >
-                  <Card style={[styles.card, { backgroundColor: "white" }]}>
+                  <CustomCard style={[styles.card, { backgroundColor: "white" }]}>
                     <Image source={report.image} style={styles.image} />
-                    <Card.Content>
+                    <View>
                       <Text style={styles.title}>{report.title}</Text>
-                    </Card.Content>
-                  </Card>
+                    </View>
+                  </CustomCard>
                 </TouchableWithoutFeedback>
               ))}
             </ScrollView>
@@ -211,7 +215,7 @@ export default function HealthRecords() {
         onPress={() => setModalVisible(true)}
       />
 
-      <Snackbar
+      <CustomSnackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
         duration={5000}
@@ -222,7 +226,7 @@ export default function HealthRecords() {
         style={{ marginBottom: 30, elevation: 6, backgroundColor: "white" }}
       >
         File deleted
-      </Snackbar>
+      </CustomSnackbar>
     </View>
   );
 }

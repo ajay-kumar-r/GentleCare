@@ -2,7 +2,15 @@
 
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-from pyngrok import ngrok
+
+# Optional pyngrok: used to expose a public URL for the local server during
+# development. If pyngrok isn't available or cannot start (for example when
+# no authtoken is configured), the app will continue running locally.
+try:
+    from pyngrok import ngrok
+    _has_pyngrok = True
+except Exception:
+    _has_pyngrok = False
 from google.cloud import speech, texttospeech
 import google.generativeai as genai
 import os
@@ -98,6 +106,14 @@ def synthesize_speech():
 
 
 if __name__ == "__main__":
-    public_url = ngrok.connect(5000).public_url
-    print(f"Public URL: {public_url}")
-    app.run(port=5000)
+    # Try to create an ngrok tunnel if pyngrok is available and configured.
+    if _has_pyngrok:
+        try:
+            public_url = ngrok.connect(5000).public_url
+            print(f"Public URL: {public_url}")
+        except Exception as e:
+            print("ngrok tunnel could not be started; running locally.", e)
+    else:
+        print("pyngrok not available; running server locally on port 5001")
+
+    app.run(host='0.0.0.0', port=5001)

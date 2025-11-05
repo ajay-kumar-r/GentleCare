@@ -1,6 +1,7 @@
 import { View, StyleSheet } from "react-native";
-import { Text, Button, Card } from "react-native-paper";
+import { Text, Button } from "react-native-paper";
 import { useState } from "react";
+import CustomCard from "../CustomCard";
 
 interface MealItemProps {
   name: string;
@@ -14,8 +15,8 @@ export default function MealItem({ name, time, calories, protein, carbs }: MealI
   const [status, setStatus] = useState<"eaten" | "skipped" | null>(null);
 
   return (
-    <Card style={styles.card}>
-      <Card.Content>
+    <CustomCard style={styles.card}>
+      <View>
         <Text style={styles.mealName}>{name}</Text>
         <Text style={styles.mealDetails}>
           Time: {time} | Calories: {calories} kcal | Protein: {protein}g | Carbs: {carbs}g
@@ -38,8 +39,8 @@ export default function MealItem({ name, time, calories, protein, carbs }: MealI
             {status === "skipped" ? "Skipped ❌" : "Skip"}
           </Button>
         </View>
-      </Card.Content>
-    </Card>
+      </View>
+    </CustomCard>
   );
 }
 

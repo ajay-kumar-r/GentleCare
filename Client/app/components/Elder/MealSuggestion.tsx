@@ -1,5 +1,6 @@
 import { View, StyleSheet } from "react-native";
-import { Text, Card } from "react-native-paper";
+import { Text } from "react-native-paper";
+import CustomCard from "../CustomCard";
 
 interface MealSuggestionProps {
   name: string;
@@ -10,15 +11,15 @@ interface MealSuggestionProps {
 
 export default function MealSuggestion({ name, calories, protein, carbs }: MealSuggestionProps) {
   return (
-    <Card style={styles.card}>
-      <Card.Content>
+    <CustomCard style={styles.card}>
+      <View>
         <Text style={styles.suggestionTitle}>Suggested Meal</Text>
         <Text style={styles.mealName}>{name}</Text>
         <Text style={styles.mealDetails}>
           Calories: {calories} kcal | Protein: {protein}g | Carbs: {carbs}g
         </Text>
-      </Card.Content>
-    </Card>
+      </View>
+    </CustomCard>
   );
 }
 

@@ -1,6 +1,7 @@
 import React from "react";
 import { View, StyleSheet, Linking, Alert } from "react-native";
-import { Text, IconButton, Card, Avatar } from "react-native-paper";
+import { Text, IconButton, Avatar } from "react-native-paper";
+import CustomCard from "../CustomCard";
 
 export default function EmergencyContactItem({
   contact,
@@ -25,8 +26,8 @@ export default function EmergencyContactItem({
   };
 
   return (
-    <Card style={styles.card} mode="outlined">
-      <Card.Content>
+    <CustomCard style={styles.card}>
+      <View>
         <View style={styles.row}>
           <Avatar.Text
             label={getInitial(contact?.name)}
@@ -47,8 +48,8 @@ export default function EmergencyContactItem({
             <IconButton icon="delete" onPress={onDelete} />
           </View>
         </View>
-      </Card.Content>
-    </Card>
+      </View>
+    </CustomCard>
   );
 }
 

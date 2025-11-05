@@ -10,11 +10,14 @@ import {
 } from "react-native";
 import { Text, IconButton, useTheme, Avatar } from "react-native-paper";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { Audio } from "expo-av";
+import { Audio } from "expo-audio";
 import * as FileSystem from "expo-file-system";
+import BackButton from "../components/BackButton";
 
-// Replace with your actual API URL
-const API_URL = "https://78ac-103-186-188-202.ngrok-free.app";
+// Use the local Flask server when running locally. If you need to reach
+// the server from a device on the same LAN, change this to your machine's
+// LAN IP (for example: "http://192.168.1.65:5000").
+const API_URL = "http://127.0.0.1:5000";
 
 export default function ChatScreen() {
   const { name } = useLocalSearchParams();
@@ -139,8 +142,8 @@ export default function ChatScreen() {
       style={styles.container}
       keyboardVerticalOffset={80}
     >
+      <BackButton />
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <IconButton icon="arrow-left" iconColor="white" onPress={() => router.back()} />
         <Avatar.Text size={36} label={name?.charAt(0) || "U"} style={styles.avatar} />
         <Text style={styles.name}>{name}</Text>
       </View>

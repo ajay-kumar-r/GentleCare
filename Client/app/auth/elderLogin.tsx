@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Text, TextInput, Button, useTheme } from "react-native-paper";
 import { useRouter } from "expo-router";
+import BackButton from "../components/BackButton";
 
 export default function ElderLoginPage() {
   const { colors } = useTheme();
@@ -18,6 +19,7 @@ export default function ElderLoginPage() {
 
   return (
     <View style={styles.container}>
+      <BackButton />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.innerContainer}

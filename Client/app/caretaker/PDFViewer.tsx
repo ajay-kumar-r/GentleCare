@@ -3,6 +3,7 @@ import { View, StyleSheet, Dimensions } from "react-native";
 import { Text, useTheme } from "react-native-paper";
 import { useLocalSearchParams } from "expo-router";
 import { WebView } from "react-native-webview";
+import BackButton from "../components/BackButton";
 
 export default function PDFViewer() {
   const { colors } = useTheme();
@@ -10,6 +11,7 @@ export default function PDFViewer() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <BackButton />
       <Text style={[styles.header, { color: colors.primary }]}>
         {title || "Document"}
       </Text>

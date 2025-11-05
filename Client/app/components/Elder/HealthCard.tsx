@@ -1,6 +1,7 @@
 import { View, StyleSheet } from "react-native";
-import { Card, Text } from "react-native-paper";
+import { Text } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import CustomCard from "../CustomCard";
 
 interface HealthCardProps {
   title: string;
@@ -12,15 +13,15 @@ interface HealthCardProps {
 
 export default function HealthCard({ title, value, unit, icon, color }: HealthCardProps) {
   return (
-    <Card style={styles.card}>
+    <CustomCard style={styles.card}>
       <View style={styles.cardContent}>
-        <MaterialCommunityIcons name={icon} size={40} color={color} />
+        <MaterialCommunityIcons name={icon as any} size={40} color={color} />
         <View>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.value}>{value} {unit}</Text>
         </View>
       </View>
-    </Card>
+    </CustomCard>
   );
 }
 

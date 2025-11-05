@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { View, ScrollView, StyleSheet, Modal, TextInput, Animated } from "react-native";
-import { Text, Button, useTheme, Snackbar } from "react-native-paper";
+import { Text, Button, useTheme } from "react-native-paper";
+import CustomSnackbar from "../components/CustomSnackbar";
 import MealItem from "../components/Elder/MealItem";
 import MealSuggestion from "../components/Elder/MealSuggestion";
 import { Calendar } from "react-native-calendars";
+import BackButton from "../components/BackButton";
 
 const initialMeals = {
   "2025-04-07": [
@@ -95,6 +97,7 @@ export default function MealTracker() {
 
   return (
     <View style={styles.container}>
+      <BackButton />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={true}>
         <Text style={[styles.title, { color: colors.primary }]}>Meal Tracker</Text>
 
@@ -160,14 +163,14 @@ export default function MealTracker() {
       </Modal>
 
       <Animated.View style={[styles.fabContainer, { bottom: fabBottom }]}>
-        <Snackbar
+        <CustomSnackbar
           visible={snackbarVisible}
           onDismiss={() => setSnackbarVisible(false)}
           duration={2500}
           style={styles.snackbar}
         >
           {snackbarMsg}
-        </Snackbar>
+        </CustomSnackbar>
       </Animated.View>
     </View>
   );

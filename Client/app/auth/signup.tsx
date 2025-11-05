@@ -9,8 +9,10 @@ import {
   Animated,
   Dimensions,
 } from "react-native";
-import { Card, Text, TextInput, Button, useTheme, IconButton } from "react-native-paper";
+import { Text, TextInput, Button, useTheme, IconButton } from "react-native-paper";
 import { useRouter } from "expo-router";
+import CustomCard from "../components/CustomCard";
+import BackButton from "../components/BackButton";
 
 export default function SignupPage() {
   const { colors } = useTheme();
@@ -33,6 +35,7 @@ export default function SignupPage() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <BackButton />
       <Text style={[styles.title, { color: colors.primary }]}>
         Sign Up
       </Text>
@@ -44,23 +47,23 @@ export default function SignupPage() {
       <View style={styles.cardContainer}>
         <TouchableOpacity activeOpacity={1} onPress={() => handlePress("elder")}>
           <Animated.View style={[styles.animatedCard, { transform: [{ scale: elderPressAnim }] }]}>
-            <Card style={styles.card}>
-              <Card.Content style={styles.cardContent}>
+            <CustomCard style={styles.card}>
+              <View style={styles.cardContent}>
                 <Image source={require("../../assets/images/elder-icon.png")} style={styles.image} />
                 <Text style={[styles.cardText, { color: colors.primary }]}>Elder</Text>
-              </Card.Content>
-            </Card>
+              </View>
+            </CustomCard>
           </Animated.View>
         </TouchableOpacity>
 
         <TouchableOpacity activeOpacity={1} onPress={() => handlePress("caretaker")}>
           <Animated.View style={[styles.animatedCard, { transform: [{ scale: caretakerPressAnim }] }]}>
-            <Card style={styles.card}>
-              <Card.Content style={styles.cardContent}>
+            <CustomCard style={styles.card}>
+              <View style={styles.cardContent}>
                 <Image source={require("../../assets/images/caretaker-icon.png")} style={styles.image} />
                 <Text style={[styles.cardText, { color: colors.primary }]}>Caretaker</Text>
-              </Card.Content>
-            </Card>
+              </View>
+            </CustomCard>
           </Animated.View>
         </TouchableOpacity>
       </View>

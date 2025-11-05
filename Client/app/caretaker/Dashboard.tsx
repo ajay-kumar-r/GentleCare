@@ -1,5 +1,6 @@
 import { View, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { Text, Avatar, useTheme, Card } from "react-native-paper";
+import { Text, Avatar, useTheme } from "react-native-paper";
+import CustomCard from "../components/CustomCard";
 import { useRouter } from "expo-router";
 import QuickAccessCard from "../components/Caretaker/QuickAccessCard";
 import NotificationItem from "../components/Caretaker/NotificationItem";
@@ -77,7 +78,7 @@ export default function CaretakerDashboard() {
           </TouchableOpacity>
         </View>
 
-        <Card style={styles.notificationsCard}>
+        <CustomCard style={styles.notificationsCard}>
           <View style={styles.notificationsListContainer}>
             <ScrollView
               style={styles.notificationsList}
@@ -90,7 +91,7 @@ export default function CaretakerDashboard() {
               ))}
             </ScrollView>
           </View>
-        </Card>
+  </CustomCard>
       </ScrollView>
     </View>
   );

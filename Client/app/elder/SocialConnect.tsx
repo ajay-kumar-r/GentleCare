@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
 import { Text, Avatar, useTheme, Button } from "react-native-paper";
 import { useRouter } from "expo-router";
+import BackButton from "../components/BackButton";
 
 const initialPeers = [
   { id: 1, name: "Alice Johnson", avatar: "https://i.pravatar.cc/150?img=1", online: true },
@@ -36,6 +37,7 @@ export default function SocialConnect() {
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <BackButton />
       <View style={styles.container}>
         <Text style={[styles.title, { color: colors.primary }]}>Social Connect</Text>
 
