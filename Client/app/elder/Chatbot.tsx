@@ -14,7 +14,11 @@ import * as FileSystem from "expo-file-system";
 import BackButton from "../components/BackButton";
 
 // Use your Mac's local IP address so the mobile device can reach the server
-const API_URL = "http://10.11.150.250:5001";
+import CustomCard from "../components/Caretaker/QuickAccessCard";
+import CustomSnackbar from "../components/Caretaker/QuickAccessCard";
+import theme from "../components/theme";
+
+const API_URL = "http://192.168.1.65:5001";
 
 export default function ChatbotVoice() {
   const { colors } = useTheme();

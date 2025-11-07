@@ -6,16 +6,45 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Text, TextInput, Button, useTheme } from "react-native-paper";
 import { useRouter } from "expo-router";
 import BackButton from "../components/BackButton";
+import { authAPI } from "../../services/api";
 
 export default function ElderLoginPage() {
   const { colors } = useTheme();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await authAPI.login(email, password);
+      
+      if (response.user.user_type !== 'elder') {
+        Alert.alert('Error', 'This account is not registered as an elder');
+        await authAPI.logout();
+        return;
+      }
+
+      // Navigate to elder dashboard
+      router.replace('/elder/Dashboard');
+    } catch (error: any) {
+      Alert.alert('Login Failed', error.message || 'Invalid email or password');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -53,10 +82,11 @@ export default function ElderLoginPage() {
         />
         <Button
           mode="contained"
-          onPress={() => router.push("../elder/Dashboard")}
+          onPress={handleLogin}
           style={styles.button}
+          disabled={loading}
         >
-          Login
+          {loading ? <ActivityIndicator color="#fff" /> : 'Login'}
         </Button>
         <TouchableOpacity onPress={() => router.push("/auth/forgetpsw")}>
           <Text style={[styles.link, { color: colors.primary, textAlign: "center" }]}>

@@ -188,7 +188,7 @@ export default function EmergencyContacts() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 40, backgroundColor: "#f9f9f9" },
+  container: { flex: 1, paddingTop: 60, backgroundColor: "#f9f9f9" },
   title: {
     fontSize: 24,
     fontFamily: "Poppins_700Bold",

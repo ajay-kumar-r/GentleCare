@@ -91,7 +91,7 @@ export default function ElderDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 40,
+    paddingTop: 60,
   },
   header: {
     flexDirection: "row",

@@ -234,7 +234,7 @@ export default function HealthRecords() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 20,
+    paddingTop: 60,
   },
   scrollContent: {
     paddingBottom: 120,

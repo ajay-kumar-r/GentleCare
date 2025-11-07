@@ -17,7 +17,7 @@ import BackButton from "../components/BackButton";
 // Use the local Flask server when running locally. If you need to reach
 // the server from a device on the same LAN, change this to your machine's
 // LAN IP (for example: "http://192.168.1.65:5000").
-const API_URL = "http://127.0.0.1:5000";
+const API_URL = "http://192.168.1.65:5001";
 
 export default function ChatScreen() {
   const { name } = useLocalSearchParams();

@@ -1,11 +1,42 @@
-import { View, StyleSheet, TouchableOpacity } from "react-native";
+import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { Text, TextInput, Button, useTheme } from "react-native-paper";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import BackButton from "../components/BackButton";
+import { authAPI } from "../../services/api";
 
 export default function CaretakerLogin() {
   const { colors } = useTheme();
   const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both email and password");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await authAPI.login(email, password);
+      
+      // Validate user type
+      if (response.user.user_type !== 'caretaker') {
+        Alert.alert("Error", "This account is not a caretaker account. Please use the Elder login.");
+        await authAPI.logout();
+        return;
+      }
+
+      // Navigate to caretaker dashboard
+      router.replace("/caretaker/Dashboard");
+    } catch (error: any) {
+      Alert.alert("Login Failed", error.message || "Invalid credentials");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -17,15 +48,21 @@ export default function CaretakerLogin() {
           label="Email"
           mode="outlined"
           keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
           style={styles.input}
           theme={{ colors: { primary: colors.primary } }}
+          disabled={loading}
         />
         <TextInput
           label="Password"
           mode="outlined"
           secureTextEntry
+          value={password}
+          onChangeText={setPassword}
           style={styles.input}
           theme={{ colors: { primary: colors.primary } }}
+          disabled={loading}
         />
       </View>
 
@@ -35,10 +72,11 @@ export default function CaretakerLogin() {
 
       <Button
         mode="contained"
-        onPress={() => router.push("/caretaker/Dashboard")}
+        onPress={handleLogin}
         style={styles.button}
+        disabled={loading}
       >
-        Login
+        {loading ? <ActivityIndicator color="#fff" /> : "Login"}
       </Button>
     </View>
   );
