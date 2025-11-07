@@ -13,12 +13,20 @@
     },
     "android": {
       "permissions": [
-        "ANDROID.PERMISSION.RECORD_AUDIO"
+        "ANDROID.PERMISSION.RECORD_AUDIO",
+        "ANDROID.PERMISSION.POST_NOTIFICATIONS"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.gentlecare.app"
+    },
+    "notification": {
+      "icon": "./assets/images/icon.png",
+      "color": "#4CAF50",
+      "androidMode": "default",
+      "androidCollapsedTitle": "{{unread_count}} new notifications"
     },
     "web": {
       "bundler": "metro",
@@ -39,7 +47,15 @@
       "expo-font",
       "expo-audio",
       "expo-video",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#4CAF50",
+          "sounds": []
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

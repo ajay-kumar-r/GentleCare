@@ -1,186 +1,427 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
-  FlatList,
+  ScrollView,
   Modal,
-  TouchableOpacity,
   Alert,
-  Animated,
+  RefreshControl,
 } from "react-native";
 import {
   Text,
   TextInput,
   Button,
-  IconButton,
   FAB,
   useTheme,
+  Checkbox,
 } from "react-native-paper";
-import EmergencyContactItem from "../components/Caretaker/EmergencyContactItem";
+import { Ionicons } from "@expo/vector-icons";
 import CustomSnackbar from "../components/CustomSnackbar";
+import CustomCard from "../components/CustomCard";
 import BackButton from "../components/BackButton";
+import { emergencyContactAPI } from "../../services/api";
+
+interface EmergencyContact {
+  id: number;
+  name: string;
+  relationship: string;
+  phone: string;
+  email?: string;
+  is_primary: boolean;
+}
 
 export default function EmergencyContacts() {
   const { colors } = useTheme();
 
-  const [contacts, setContacts] = useState([
-    {
-      id: "1",
-      name: "Dr. Smith",
-      phone: "9876543210",
-    },
-    {
-      id: "2",
-      name: "Nurse Lily",
-      phone: "9876501234",
-    },
-  ]);
-
+  const [contacts, setContacts] = useState<EmergencyContact[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [selectedContact, setSelectedContact] = useState<any>(null);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<EmergencyContact | null>(null);
+  
+  // Form fields
   const [name, setName] = useState("");
+  const [relationship, setRelationship] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [isPrimary, setIsPrimary] = useState(false);
 
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
-  const [deletedContact, setDeletedContact] = useState<any>(null);
 
-  const [fabBottom] = useState(new Animated.Value(20));
+  useEffect(() => {
+    fetchContacts();
+  }, []);
 
-  const openModal = (contact: any = null) => {
-    if (contact) {
-      setIsEditing(true);
-      setSelectedContact(contact);
-      setName(contact.name);
-      setPhone(contact.phone);
-    } else {
-      setIsEditing(false);
-      setSelectedContact(null);
-      setName("");
-      setPhone("");
+  const fetchContacts = async () => {
+    try {
+      const response = await emergencyContactAPI.getAll();
+      const fetchedContacts = response.contacts || [];
+      
+      // If no contacts, show sample data
+      if (fetchedContacts.length === 0) {
+        setContacts([
+          {
+            id: -1,
+            name: "Mary Caretaker",
+            relationship: "Primary Caregiver",
+            phone: "+1234567890",
+            email: "mary.caretaker@example.com",
+            is_primary: true,
+          },
+          {
+            id: -2,
+            name: "Robert Elder",
+            relationship: "Son",
+            phone: "+1987654321",
+            email: "robert.elder@example.com",
+            is_primary: false,
+          },
+          {
+            id: -3,
+            name: "Dr. Sarah Wilson",
+            relationship: "Family Doctor",
+            phone: "+1555123456",
+            email: "dr.wilson@cityhospital.com",
+            is_primary: false,
+          },
+        ]);
+      } else {
+        setContacts(fetchedContacts);
+      }
+    } catch (error: any) {
+      console.error("Error fetching contacts:", error);
+      // Show sample data on error
+      setContacts([
+        {
+          id: -1,
+          name: "Emergency Contact",
+          relationship: "Family",
+          phone: "+1234567890",
+          is_primary: true,
+        },
+      ]);
+      showSnackbar("Showing sample data");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchContacts();
+  };
+
+  const resetForm = () => {
+    setName("");
+    setRelationship("");
+    setPhone("");
+    setEmail("");
+    setIsPrimary(false);
+  };
+
+  const openAddModal = () => {
+    resetForm();
     setModalVisible(true);
   };
 
-  const handleSave = () => {
-    if (name.trim() === "" || phone.trim() === "") {
-      Alert.alert("Please fill in both name and phone");
+  const openEditModal = (contact: EmergencyContact) => {
+    setSelectedContact(contact);
+    setName(contact.name);
+    setRelationship(contact.relationship);
+    setPhone(contact.phone);
+    setEmail(contact.email || "");
+    setIsPrimary(contact.is_primary);
+    setEditModalVisible(true);
+  };
+
+  const handleAdd = async () => {
+    if (!name.trim() || !relationship.trim() || !phone.trim()) {
+      Alert.alert("Missing Fields", "Please fill in name, relationship, and phone");
       return;
     }
 
-    if (isEditing && selectedContact) {
-      const updated = contacts.map((c) =>
-        c.id === selectedContact.id ? { ...c, name, phone } : c
-      );
-      setContacts(updated);
-      showSnackbar("Contact updated");
-    } else {
-      const newContact = {
-        id: Date.now().toString(),
+    try {
+      await emergencyContactAPI.add({
         name,
+        relationship,
         phone,
-      };
-      setContacts([...contacts, newContact]);
-      showSnackbar("Contact added");
-    }
-
-    setModalVisible(false);
-  };
-
-  const handleDelete = (id: string) => {
-    const contactToDelete = contacts.find((c) => c.id === id);
-    setDeletedContact(contactToDelete);
-    setContacts(contacts.filter((c) => c.id !== id));
-    showSnackbar("Contact deleted", true);
-  };
-
-  const undoDelete = () => {
-    if (deletedContact) {
-      setContacts((prev) => [...prev, deletedContact]);
-      setDeletedContact(null);
-      setSnackbarVisible(false);
+        email: email || undefined,
+        is_primary: isPrimary,
+      });
+      showSnackbar("Contact added successfully");
+      setModalVisible(false);
+      resetForm();
+      fetchContacts();
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to add contact");
     }
   };
 
-  const showSnackbar = (message: string, withUndo = false) => {
+  const handleUpdate = async () => {
+    if (!selectedContact) return;
+    if (!name.trim() || !relationship.trim() || !phone.trim()) {
+      Alert.alert("Missing Fields", "Please fill in name, relationship, and phone");
+      return;
+    }
+
+    try {
+      await emergencyContactAPI.update(selectedContact.id, {
+        name,
+        relationship,
+        phone,
+        email: email || undefined,
+        is_primary: isPrimary,
+      });
+      showSnackbar("Contact updated successfully");
+      setEditModalVisible(false);
+      resetForm();
+      setSelectedContact(null);
+      fetchContacts();
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to update contact");
+    }
+  };
+
+  const handleDelete = (contact: EmergencyContact) => {
+    Alert.alert(
+      "Delete Contact",
+      `Are you sure you want to delete ${contact.name}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await emergencyContactAPI.delete(contact.id);
+              showSnackbar("Contact deleted successfully");
+              fetchContacts();
+            } catch (error: any) {
+              Alert.alert("Error", error.message || "Failed to delete contact");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const showSnackbar = (message: string) => {
     setSnackbarMsg(message);
     setSnackbarVisible(true);
-
-    if (!withUndo) {
-      setTimeout(() => {
-        setSnackbarVisible(false);
-      }, 3000);
-    }
   };
 
   return (
     <View style={styles.container}>
       <BackButton />
-      <Text style={[styles.title, {color: colors.primary}]}>Emergency Contacts</Text>
+      <Text style={[styles.title, { color: colors.primary }]}>Emergency Contacts</Text>
 
-      <FlatList
-        data={contacts}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        renderItem={({ item }) => (
-          <EmergencyContactItem
-            contact={item}
-            onEdit={() => openModal(item)}
-            onDelete={() => handleDelete(item.id)}
-          />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        {contacts.length > 0 ? (
+          contacts.map((contact) => (
+            <CustomCard key={contact.id} style={styles.card}>
+              <View style={styles.cardContent}>
+                <View style={styles.cardTop}>
+                  <View style={styles.contactInfo}>
+                    <View style={styles.nameRow}>
+                      <Text style={styles.contactName}>{contact.name}</Text>
+                      {contact.is_primary && (
+                        <View style={styles.primaryBadge}>
+                          <Text style={styles.primaryText}>Primary</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.relationship}>{contact.relationship}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.detailsContainer}>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="call" size={16} color="#4CAF50" />
+                    <Text style={styles.detailText}>{contact.phone}</Text>
+                  </View>
+                  {contact.email && (
+                    <View style={styles.detailRow}>
+                      <Ionicons name="mail" size={16} color="#2196F3" />
+                      <Text style={styles.detailText}>{contact.email}</Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.actionButtons}>
+                  <Button
+                    mode="outlined"
+                    icon="pencil"
+                    onPress={() => openEditModal(contact)}
+                    style={styles.editButton}
+                    labelStyle={styles.editButtonLabel}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    mode="text"
+                    icon="delete"
+                    onPress={() => handleDelete(contact)}
+                    textColor="#f44336"
+                    labelStyle={styles.deleteButtonLabel}
+                  >
+                    Delete
+                  </Button>
+                </View>
+              </View>
+            </CustomCard>
+          ))
+        ) : (
+          <Text style={styles.emptyText}>No emergency contacts added yet</Text>
         )}
+      </ScrollView>
+
+      <FAB
+        icon="plus"
+        style={styles.fab}
+        onPress={openAddModal}
+        label="Add Contact"
       />
 
-      <Modal visible={modalVisible} transparent animationType="slide">
+      {/* Add Contact Modal */}
+      <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {isEditing ? "Edit Contact" : "Add Contact"}
-              </Text>
-              <IconButton icon="close" onPress={() => setModalVisible(false)} />
-            </View>
+          <CustomCard style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Add Emergency Contact</Text>
 
             <TextInput
-              label="Name"
+              label="Name *"
               value={name}
               onChangeText={setName}
               style={styles.input}
+              mode="outlined"
             />
+
             <TextInput
-              label="Phone"
+              label="Relationship *"
+              value={relationship}
+              onChangeText={setRelationship}
+              style={styles.input}
+              mode="outlined"
+            />
+
+            <TextInput
+              label="Phone *"
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
               style={styles.input}
+              mode="outlined"
             />
 
-            <Button mode="contained" onPress={handleSave}>
-              {isEditing ? "Update" : "Add"}
-            </Button>
-          </View>
+            <TextInput
+              label="Email (optional)"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              style={styles.input}
+              mode="outlined"
+            />
+
+            <View style={styles.checkboxRow}>
+              <Checkbox
+                status={isPrimary ? "checked" : "unchecked"}
+                onPress={() => setIsPrimary(!isPrimary)}
+              />
+              <Text style={styles.checkboxLabel}>Set as primary contact</Text>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <Button
+                mode="outlined"
+                onPress={() => {
+                  setModalVisible(false);
+                  resetForm();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button mode="contained" onPress={handleAdd}>
+                Add
+              </Button>
+            </View>
+          </CustomCard>
         </View>
       </Modal>
 
-      <Animated.View style={[styles.fabContainer, { bottom: fabBottom }]}>
-        <FAB icon="plus" style={styles.fab} onPress={() => openModal()} />
-      </Animated.View>
+      {/* Edit Contact Modal */}
+      <Modal visible={editModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <CustomCard style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Edit Emergency Contact</Text>
 
-      <CustomSnackbar
-        visible={snackbarVisible}
-        onDismiss={() => setSnackbarVisible(false)}
-        action={
-          deletedContact
-            ? {
-                label: "Undo",
-                onPress: undoDelete,
-              }
-            : undefined
-        }
-        duration={3000}
-        style={styles.snackbar}
-      >
+            <TextInput
+              label="Name *"
+              value={name}
+              onChangeText={setName}
+              style={styles.input}
+              mode="outlined"
+            />
+
+            <TextInput
+              label="Relationship *"
+              value={relationship}
+              onChangeText={setRelationship}
+              style={styles.input}
+              mode="outlined"
+            />
+
+            <TextInput
+              label="Phone *"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              style={styles.input}
+              mode="outlined"
+            />
+
+            <TextInput
+              label="Email (optional)"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              style={styles.input}
+              mode="outlined"
+            />
+
+            <View style={styles.checkboxRow}>
+              <Checkbox
+                status={isPrimary ? "checked" : "unchecked"}
+                onPress={() => setIsPrimary(!isPrimary)}
+              />
+              <Text style={styles.checkboxLabel}>Set as primary contact</Text>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <Button
+                mode="outlined"
+                onPress={() => {
+                  setEditModalVisible(false);
+                  resetForm();
+                  setSelectedContact(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button mode="contained" onPress={handleUpdate}>
+                Update
+              </Button>
+            </View>
+          </CustomCard>
+        </View>
+      </Modal>
+
+      <CustomSnackbar visible={snackbarVisible} onDismiss={() => setSnackbarVisible(false)}>
         {snackbarMsg}
       </CustomSnackbar>
     </View>
@@ -188,51 +429,141 @@ export default function EmergencyContacts() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 60, backgroundColor: "#f9f9f9" },
+  container: {
+    flex: 1,
+    paddingTop: 60,
+    backgroundColor: "#F5F5F5",
+  },
   title: {
     fontSize: 24,
     fontFamily: "Poppins_700Bold",
-    textShadowColor: "rgba(0, 0, 0, 0.3)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
     textAlign: "center",
-    marginBottom: 10,
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 100,
+  },
+  card: {
+    marginBottom: 12,
+    elevation: 2,
+    backgroundColor: "#FFF",
+  },
+  cardContent: {
+    padding: 16,
+  },
+  cardTop: {
+    marginBottom: 12,
+  },
+  contactInfo: {
+    flex: 1,
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  contactName: {
+    fontSize: 18,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#333",
+  },
+  primaryBadge: {
+    marginLeft: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    backgroundColor: "#4CAF50",
+    borderRadius: 12,
+  },
+  primaryText: {
+    fontSize: 10,
+    color: "#FFF",
+    fontFamily: "Poppins_600SemiBold",
+  },
+  relationship: {
+    fontSize: 14,
+    color: "#666",
+    fontFamily: "Poppins_400Regular",
+  },
+  detailsContainer: {
+    marginBottom: 12,
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  detailText: {
+    fontSize: 14,
+    color: "#333",
+    marginLeft: 8,
+    fontFamily: "Poppins_400Regular",
+  },
+  actionButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  editButton: {
+    flex: 1,
+    marginRight: 8,
+    borderColor: "#2196F3",
+  },
+  editButtonLabel: {
+    color: "#2196F3",
+  },
+  deleteButtonLabel: {
+    color: "#f44336",
+  },
+  emptyText: {
+    textAlign: "center",
+    fontSize: 16,
+    color: "#999",
+    marginTop: 50,
+    fontFamily: "Poppins_400Regular",
+  },
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 20,
+    backgroundColor: "#4CAF50",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "#000000aa",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 20,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    padding: 20,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 400,
+    padding: 20,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: "Poppins_700Bold",
+    marginBottom: 20,
+    textAlign: "center",
   },
   input: {
     marginBottom: 12,
-    backgroundColor: "#fff",
   },
-  fabContainer: {
-    position: "absolute",
-    right: 20,
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 12,
   },
-  fab: {
-    backgroundColor: "#007bff",
+  checkboxLabel: {
+    fontSize: 14,
+    fontFamily: "Poppins_400Regular",
+    marginLeft: 8,
   },
-  snackbar: {
-    backgroundColor: "#fff",
-    marginBottom: 10,
-    marginHorizontal: 16,
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+    gap: 12,
   },
 });

@@ -7,7 +7,7 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_bcrypt import Bcrypt
 from flask_socketio import SocketIO, emit, join_room, leave_room
-from models import db, User, ElderProfile, CaretakerProfile, Medication, MedicationLog, HealthRecord, Meal, Appointment, EmergencyContact, Notification, LocationLog
+from models import db, User, ElderProfile, CaretakerProfile, Medication, MedicationLog, HealthRecord, Meal, Appointment, EmergencyContact, Notification, LocationLog, Prescription
 from datetime import datetime, timedelta
 import os
 import io
@@ -497,6 +497,26 @@ def add_health_record():
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
+@app.route('/health-records/<int:record_id>', methods=['DELETE'])
+@jwt_required()
+def delete_health_record(record_id):
+    """Delete health record"""
+    try:
+        user_id = int(get_jwt_identity())
+        record = HealthRecord.query.get(record_id)
+        
+        if not record:
+            return jsonify({"error": "Health record not found"}), 404
+        
+        db.session.delete(record)
+        db.session.commit()
+        
+        return jsonify({"message": "Health record deleted successfully"}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
 # ===========================
 # MEAL TRACKING ROUTES
 # ===========================
@@ -647,6 +667,73 @@ def add_appointment():
             "message": "Appointment added successfully",
             "appointment_id": appointment.id
         }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/appointments/<int:appointment_id>', methods=['PUT'])
+@jwt_required()
+def update_appointment(appointment_id):
+    """Update appointment"""
+    try:
+        user_id = int(get_jwt_identity())
+        data = request.json
+        appointment = Appointment.query.get(appointment_id)
+        
+        if not appointment:
+            return jsonify({"error": "Appointment not found"}), 404
+        
+        if data.get('title'):
+            appointment.title = data['title']
+        if data.get('doctor_name'):
+            appointment.doctor_name = data['doctor_name']
+        if data.get('location'):
+            appointment.location = data['location']
+        if data.get('appointment_date'):
+            appointment.appointment_date = datetime.fromisoformat(data['appointment_date'])
+        if data.get('duration_minutes'):
+            appointment.duration_minutes = data['duration_minutes']
+        if data.get('notes'):
+            appointment.notes = data['notes']
+        if data.get('status'):
+            appointment.status = data['status']
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Appointment updated successfully",
+            "appointment": {
+                "id": appointment.id,
+                "title": appointment.title,
+                "doctor_name": appointment.doctor_name,
+                "location": appointment.location,
+                "appointment_date": appointment.appointment_date.isoformat(),
+                "duration_minutes": appointment.duration_minutes,
+                "status": appointment.status,
+                "notes": appointment.notes
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/appointments/<int:appointment_id>', methods=['DELETE'])
+@jwt_required()
+def delete_appointment(appointment_id):
+    """Delete appointment"""
+    try:
+        user_id = int(get_jwt_identity())
+        appointment = Appointment.query.get(appointment_id)
+        
+        if not appointment:
+            return jsonify({"error": "Appointment not found"}), 404
+        
+        db.session.delete(appointment)
+        db.session.commit()
+        
+        return jsonify({"message": "Appointment deleted successfully"}), 200
         
     except Exception as e:
         db.session.rollback()
@@ -826,6 +913,67 @@ def add_emergency_contact():
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
+@app.route('/emergency-contacts/<int:contact_id>', methods=['PUT'])
+@jwt_required()
+def update_emergency_contact(contact_id):
+    """Update emergency contact"""
+    try:
+        user_id = int(get_jwt_identity())
+        data = request.json
+        contact = EmergencyContact.query.get(contact_id)
+        
+        if not contact:
+            return jsonify({"error": "Emergency contact not found"}), 404
+        
+        if data.get('name'):
+            contact.name = data['name']
+        if data.get('relationship'):
+            contact.relationship = data['relationship']
+        if data.get('phone'):
+            contact.phone = data['phone']
+        if data.get('email') is not None:
+            contact.email = data['email']
+        if data.get('is_primary') is not None:
+            contact.is_primary = data['is_primary']
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Emergency contact updated successfully",
+            "contact": {
+                "id": contact.id,
+                "name": contact.name,
+                "relationship": contact.relationship,
+                "phone": contact.phone,
+                "email": contact.email,
+                "is_primary": contact.is_primary
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/emergency-contacts/<int:contact_id>', methods=['DELETE'])
+@jwt_required()
+def delete_emergency_contact(contact_id):
+    """Delete emergency contact"""
+    try:
+        user_id = int(get_jwt_identity())
+        contact = EmergencyContact.query.get(contact_id)
+        
+        if not contact:
+            return jsonify({"error": "Emergency contact not found"}), 404
+        
+        db.session.delete(contact)
+        db.session.commit()
+        
+        return jsonify({"message": "Emergency contact deleted successfully"}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
 # ===========================
 # CHATBOT ROUTES (EXISTING)
 # ===========================
@@ -902,6 +1050,173 @@ def speak():
             download_name="response.wav"
         )
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ===========================
+# PRESCRIPTION ENDPOINTS
+# ===========================
+
+@app.route('/prescriptions', methods=['GET'])
+@jwt_required()
+def get_prescriptions():
+    """Get all prescriptions for the authenticated user"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        
+        # Get elder_id based on user type
+        if user.user_type == 'elder':
+            elder_id = user.elder_profile.id
+        else:  # caretaker
+            elder_id = request.args.get('elder_id', type=int)
+            if not elder_id:
+                # Get all elders under this caretaker
+                elders = ElderProfile.query.filter_by(caretaker_id=user_id).all()
+                if not elders:
+                    return jsonify({"prescriptions": []}), 200
+                elder_id = elders[0].id
+        
+        prescriptions = Prescription.query.filter_by(elder_id=elder_id).order_by(Prescription.date.desc()).all()
+        
+        return jsonify({
+            "prescriptions": [{
+                "id": p.id,
+                "elder_id": p.elder_id,
+                "doctor_name": p.doctor_name,
+                "date": p.date.isoformat() if p.date else None,
+                "diagnosis": p.diagnosis,
+                "medicines": p.medicines,
+                "notes": p.notes,
+                "image_path": p.image_path,
+                "created_at": p.created_at.isoformat()
+            } for p in prescriptions]
+        }), 200
+    except Exception as e:
+        print(f"Error fetching prescriptions: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/prescriptions', methods=['POST'])
+@jwt_required()
+def add_prescription():
+    """Add a new prescription"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        
+        data = request.get_json()
+        
+        # Get elder_id based on user type
+        if user.user_type == 'elder':
+            elder_id = user.elder_profile.id
+        else:  # caretaker
+            elder_id = data.get('elder_id')
+            if not elder_id:
+                elders = ElderProfile.query.filter_by(caretaker_id=user_id).all()
+                if not elders:
+                    return jsonify({"error": "No elder profile found"}), 404
+                elder_id = elders[0].id
+        
+        prescription = Prescription(
+            elder_id=elder_id,
+            doctor_name=data.get('doctor_name'),
+            date=datetime.strptime(data['date'], '%Y-%m-%d').date() if data.get('date') else datetime.utcnow().date(),
+            diagnosis=data.get('diagnosis'),
+            medicines=data.get('medicines'),  # JSON string
+            notes=data.get('notes'),
+            image_path=data.get('image_path')
+        )
+        
+        db.session.add(prescription)
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Prescription added successfully",
+            "prescription": {
+                "id": prescription.id,
+                "elder_id": prescription.elder_id,
+                "doctor_name": prescription.doctor_name,
+                "date": prescription.date.isoformat(),
+                "diagnosis": prescription.diagnosis,
+                "medicines": prescription.medicines,
+                "notes": prescription.notes,
+                "image_path": prescription.image_path
+            }
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error adding prescription: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/prescriptions/<int:prescription_id>', methods=['PUT'])
+@jwt_required()
+def update_prescription(prescription_id):
+    """Update an existing prescription"""
+    try:
+        user_id = int(get_jwt_identity())
+        prescription = Prescription.query.get(prescription_id)
+        
+        if not prescription:
+            return jsonify({"error": "Prescription not found"}), 404
+        
+        data = request.get_json()
+        
+        # Update fields if provided
+        if 'doctor_name' in data:
+            prescription.doctor_name = data['doctor_name']
+        if 'date' in data:
+            prescription.date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+        if 'diagnosis' in data:
+            prescription.diagnosis = data['diagnosis']
+        if 'medicines' in data:
+            prescription.medicines = data['medicines']
+        if 'notes' in data:
+            prescription.notes = data['notes']
+        if 'image_path' in data:
+            prescription.image_path = data['image_path']
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Prescription updated successfully",
+            "prescription": {
+                "id": prescription.id,
+                "doctor_name": prescription.doctor_name,
+                "date": prescription.date.isoformat(),
+                "diagnosis": prescription.diagnosis,
+                "medicines": prescription.medicines,
+                "notes": prescription.notes,
+                "image_path": prescription.image_path
+            }
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating prescription: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/prescriptions/<int:prescription_id>', methods=['DELETE'])
+@jwt_required()
+def delete_prescription(prescription_id):
+    """Delete a prescription"""
+    try:
+        user_id = int(get_jwt_identity())
+        prescription = Prescription.query.get(prescription_id)
+        
+        if not prescription:
+            return jsonify({"error": "Prescription not found"}), 404
+        
+        db.session.delete(prescription)
+        db.session.commit()
+        
+        return jsonify({"message": "Prescription deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting prescription: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # ===========================

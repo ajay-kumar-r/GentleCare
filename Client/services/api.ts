@@ -261,6 +261,12 @@ export const healthAPI = {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  },
+
+  async delete(recordId: number) {
+    return await apiRequest(`/health-records/${recordId}`, {
+      method: 'DELETE',
+    });
   }
 };
 
@@ -324,9 +330,30 @@ export const appointmentAPI = {
       body: JSON.stringify(data),
     });
   },
+
+  async update(appointmentId: number, data: {
+    title?: string;
+    doctor_name?: string;
+    location?: string;
+    appointment_date?: string;
+    duration_minutes?: number;
+    notes?: string;
+    status?: string;
+  }) {
+    return await apiRequest(`/appointments/${appointmentId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async delete(appointmentId: number) {
+    return await apiRequest(`/appointments/${appointmentId}`, {
+      method: 'DELETE',
+    });
+  },
   
   async updateStatus(appointmentId: number, status: 'scheduled' | 'completed' | 'cancelled') {
-    return await apiRequest(`/appointments/${appointmentId}/status`, {
+    return await apiRequest(`/appointments/${appointmentId}`, {
       method: 'PUT',
       body: JSON.stringify({ status }),
     });
@@ -389,6 +416,19 @@ export const emergencyContactAPI = {
       body: JSON.stringify(data),
     });
   },
+
+  async update(contactId: number, data: {
+    name?: string;
+    relationship?: string;
+    phone?: string;
+    email?: string;
+    is_primary?: boolean;
+  }) {
+    return await apiRequest(`/emergency-contacts/${contactId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
   
   async delete(contactId: number) {
     return await apiRequest(`/emergency-contacts/${contactId}`, {
@@ -443,5 +483,51 @@ export const chatbotAPI = {
     }
     
     return response.blob();
+  }
+};
+
+// ===========================
+// Prescription API
+// ===========================
+
+export const prescriptionAPI = {
+  async getAll(elderId?: number) {
+    const query = elderId ? `?elder_id=${elderId}` : '';
+    return await apiRequest(`/prescriptions${query}`);
+  },
+  
+  async add(data: {
+    doctor_name?: string;
+    date: string;
+    diagnosis?: string;
+    medicines: string;  // JSON string
+    notes?: string;
+    image_path?: string;
+    elder_id?: number;
+  }) {
+    return await apiRequest('/prescriptions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  
+  async update(prescriptionId: number, data: {
+    doctor_name?: string;
+    date?: string;
+    diagnosis?: string;
+    medicines?: string;
+    notes?: string;
+    image_path?: string;
+  }) {
+    return await apiRequest(`/prescriptions/${prescriptionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  
+  async delete(prescriptionId: number) {
+    return await apiRequest(`/prescriptions/${prescriptionId}`, {
+      method: 'DELETE',
+    });
   }
 };

@@ -1,231 +1,428 @@
+import React, { useState, useEffect } from "react";
 import {
   View,
-  ScrollView,
   StyleSheet,
-  Image,
-  TouchableWithoutFeedback,
+  ScrollView,
   Modal,
-  Dimensions,
-  Platform,
   Alert,
+  RefreshControl,
 } from "react-native";
-import { Text, useTheme, FAB, Button } from "react-native-paper";
+import {
+  Text,
+  TextInput,
+  Button,
+  useTheme,
+  FAB,
+} from "react-native-paper";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import HealthCard from "../components/Elder/HealthCard";
+import HealthChart from "../components/Elder/HealthChart";
 import CustomSnackbar from "../components/CustomSnackbar";
-import { useRouter } from "expo-router";
 import CustomCard from "../components/CustomCard";
 import BackButton from "../components/BackButton";
-import * as DocumentPicker from "expo-document-picker";
-import { useState } from "react";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { healthAPI } from "../../services/api";
 
-const screenWidth = Dimensions.get("window").width;
-const CARD_WIDTH = (screenWidth - 60) / 2;
+interface HealthRecord {
+  id: number;
+  type: string;
+  value: string;
+  unit: string;
+  notes?: string;
+  recorded_at: string;
+}
+
+interface Elder {
+  id: number;
+  user_id: number;
+  full_name: string;
+}
 
 export default function HealthRecords() {
   const { colors } = useTheme();
-  const router = useRouter();
 
+  const [records, setRecords] = useState<HealthRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [pdfFile, setPdfFile] = useState<any>(null);
-  const [deletedRecord, setDeletedRecord] = useState<any>(null);
-  const [snackbarVisible, setSnackbarVisible] = useState(false);
-  const [records, setRecords] = useState<{
-    [date: string]: {
-      id: string;
-      title: string;
-      image: any;
-      uri?: string;
-    }[];
-  }>({
-    "March 25, 2025": [
-      { id: "1", title: "Blood Test", image: require("../../assets/images/report.png") },
-      { id: "2", title: "Liver Function", image: require("../../assets/images/report.png") },
-    ],
-    "April 05, 2025": [
-      { id: "3", title: "ECG", image: require("../../assets/images/report.png") },
-      { id: "4", title: "Heart Health", image: require("../../assets/images/report.png") },
-    ],
-    "April 10, 2025": [
-      { id: "5", title: "X-Ray", image: require("../../assets/images/report.png") },
-      { id: "6", title: "Bone Health", image: require("../../assets/images/report.png") },
-      { id: "7", title: "MRI Scan", image: require("../../assets/images/report.png") },
-    ],
-  });
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<HealthRecord | null>(null);
+  
+  // Elder selection
+  const [elders, setElders] = useState<Elder[]>([]);
+  const [selectedElderId, setSelectedElderId] = useState<number | null>(null);
+  
+  // Form fields
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [value, setValue] = useState("");
+  const [value2, setValue2] = useState(""); // For systolic/diastolic BP
+  const [notes, setNotes] = useState("");
 
-  const handleAddRecord = async () => {
+  // Health record categories with auto-assigned units
+  const healthCategories = [
+    { id: "blood_pressure", label: "Blood Pressure", unit: "mmHg", icon: "heart", type: "dual", placeholder1: "Systolic", placeholder2: "Diastolic" },
+    { id: "heart_rate", label: "Heart Rate", unit: "bpm", icon: "heart-pulse", type: "single", placeholder: "72" },
+    { id: "blood_glucose", label: "Blood Glucose", unit: "mg/dL", icon: "water", type: "single", placeholder: "95" },
+    { id: "temperature", label: "Temperature", unit: "°F", icon: "thermometer", type: "single", placeholder: "98.6" },
+    { id: "oxygen_saturation", label: "Oxygen Level", unit: "%", icon: "pulse", type: "single", placeholder: "98" },
+    { id: "weight", label: "Weight", unit: "lbs", icon: "scale", type: "single", placeholder: "150" },
+    { id: "respiratory_rate", label: "Respiratory Rate", unit: "breaths/min", icon: "pulse", type: "single", placeholder: "16" },
+  ];
+
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMsg, setSnackbarMsg] = useState("");
+
+  useEffect(() => {
+    loadUserData();
+    fetchRecords();
+  }, []);
+
+  const loadUserData = async () => {
     try {
-      const pickedDoc = await DocumentPicker.getDocumentAsync({ type: "application/pdf" });
-      if (!pickedDoc.canceled && pickedDoc.assets.length > 0) {
-        setPdfFile(pickedDoc.assets[0]);
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user.user_type === 'caretaker' && user.profile?.elders) {
+          setElders(user.profile.elders);
+          // Auto-select first elder if only one
+          if (user.profile.elders.length === 1) {
+            setSelectedElderId(user.profile.elders[0].id);
+          }
+        }
       }
-    } catch (err) {
-      console.log("Error picking document:", err);
+    } catch (error) {
+      console.error('Error loading user data:', error);
     }
   };
 
-  const handleDateConfirm = (event: any, date?: Date) => {
-    setShowDatePicker(false);
-    if (date) setSelectedDate(date);
+  const fetchRecords = async () => {
+    try {
+      const response = await healthAPI.getRecords({ days: 7 });
+      const fetchedRecords = response.records || [];
+      
+      // Always use fetched records
+      setRecords(fetchedRecords);
+    } catch (error: any) {
+      console.error("Error fetching health records:", error);
+      setRecords([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const saveRecord = () => {
-    if (!pdfFile) return;
+  // Calculate latest values for each type
+  const getLatestValue = (type: string) => {
+    const filtered = records.filter(r => r.type.toLowerCase() === type.toLowerCase());
+    return filtered.length > 0 ? filtered[0].value : "N/A";
+  };
 
-    const dateKey = selectedDate.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-
-    const newReport = {
-      id: Math.random().toString(),
-      title: pdfFile.name || "New Report",
-      image: require("../../assets/images/report.png"),
-      uri: pdfFile.uri,
+  // Get chart data for a specific type
+  const getChartData = (type: string) => {
+    const filtered = records
+      .filter(r => r.type.toLowerCase() === type.toLowerCase())
+      .slice(0, 7)
+      .reverse();
+    
+    return {
+      labels: filtered.map((_, i) => `Day ${i + 1}`),
+      data: filtered.map(r => parseFloat(r.value) || 0),
     };
-
-    setRecords((prev) => {
-      const updated = { ...prev };
-      updated[dateKey] = updated[dateKey] ? [...updated[dateKey], newReport] : [newReport];
-      return updated;
-    });
-
-    setModalVisible(false);
-    setPdfFile(null);
-    setSelectedDate(new Date());
   };
 
-  const handleLongPress = (date: string, reportId: string) => {
-    Alert.alert("Delete Report", "Are you sure you want to delete this report?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          const reportToDelete = records[date].find((r) => r.id === reportId);
-          setRecords((prev) => {
-            const updated = { ...prev };
-            updated[date] = updated[date].filter((r) => r.id !== reportId);
-            if (updated[date].length === 0) delete updated[date];
-            return updated;
-          });
-          setDeletedRecord({ date, report: reportToDelete });
-          setSnackbarVisible(true);
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchRecords();
+  };
+
+  const resetForm = () => {
+    setSelectedCategory("");
+    setValue("");
+    setValue2("");
+    setNotes("");
+  };
+
+  const getSelectedCategory = () => {
+    return healthCategories.find(cat => cat.id === selectedCategory);
+  };
+
+  const openAddModal = () => {
+    resetForm();
+    setModalVisible(true);
+  };
+
+  const handleAdd = async () => {
+    const category = getSelectedCategory();
+    
+    if (!selectedElderId) {
+      Alert.alert("Select Elder", "Please select an elder to add this record for");
+      return;
+    }
+    
+    if (!selectedCategory || !category) {
+      Alert.alert("Missing Category", "Please select a health category");
+      return;
+    }
+
+    if (!value.trim()) {
+      Alert.alert("Missing Value", "Please enter a value");
+      return;
+    }
+
+    // For blood pressure, need both values
+    if (category.type === "dual" && !value2.trim()) {
+      Alert.alert("Missing Value", "Please enter both systolic and diastolic values");
+      return;
+    }
+
+    try {
+      const finalValue = category.type === "dual" ? `${value}/${value2}` : value;
+      
+      await healthAPI.addRecord({
+        type: category.id,
+        value: finalValue,
+        unit: category.unit,
+        notes: notes || undefined,
+        elder_id: selectedElderId,
+      });
+      
+      // Close modal and reset form first
+      setModalVisible(false);
+      resetForm();
+      
+      // Show success message
+      showSnackbar("Health record added successfully");
+      
+      // Refresh the records list
+      await fetchRecords();
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to add health record");
+    }
+  };
+
+  const handleDelete = (record: HealthRecord) => {
+    Alert.alert(
+      "Delete Record",
+      `Are you sure you want to delete this ${record.type} record?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await healthAPI.delete(record.id);
+              showSnackbar("Record deleted successfully");
+              fetchRecords();
+            } catch (error: any) {
+              Alert.alert("Error", error.message || "Failed to delete record");
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
-  const undoDelete = () => {
-    if (!deletedRecord) return;
-    const { date, report } = deletedRecord;
-    setRecords((prev) => {
-      const updated = { ...prev };
-      updated[date] = updated[date] ? [...updated[date], report] : [report];
-      return updated;
-    });
-    setDeletedRecord(null);
+  const showSnackbar = (message: string) => {
+    setSnackbarMsg(message);
+    setSnackbarVisible(true);
   };
+
+  const heartRateData = getChartData("heart_rate");
+  const glucoseData = getChartData("blood_glucose");
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <BackButton />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={true}>
-        <Text style={[styles.header, { color: colors.primary }]}>Health Records</Text>
-
-        {Object.keys(records).map((date) => (
-          <View key={date} style={styles.section}>
-            <Text style={styles.dateLabel}>{date}</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={true}
-              contentContainerStyle={styles.cardRow}
-            >
-              {records[date].map((report) => (
-                <TouchableWithoutFeedback
-                  key={report.id}
-                  onPress={() => {
-                    if (report.uri) {
-                      router.push({
-                        pathname: "/caretaker/PDFViewer",
-                        params: { uri: report.uri, title: report.title },
-                      });
-                    } else {
-                      alert("No PDF available for this record.");
-                    }
-                  }}
-                  onLongPress={() => handleLongPress(date, report.id)}
-                >
-                  <CustomCard style={[styles.card, { backgroundColor: "white" }]}>
-                    <Image source={report.image} style={styles.image} />
-                    <View>
-                      <Text style={styles.title}>{report.title}</Text>
-                    </View>
-                  </CustomCard>
-                </TouchableWithoutFeedback>
-              ))}
-            </ScrollView>
-          </View>
-        ))}
-      </ScrollView>
-
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setModalVisible(false)}
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add Health Report</Text>
-            <Button mode="outlined" onPress={() => setShowDatePicker(true)} style={{ marginBottom: 10 }}>
-              Select Date
-            </Button>
-            <Text style={{ textAlign: "center" }}>Selected Date: {selectedDate.toDateString()}</Text>
-            <Button mode="contained" onPress={handleAddRecord} style={{ marginTop: 20 }}>
-              Upload PDF
-            </Button>
-            <Button mode="contained" onPress={saveRecord} disabled={!pdfFile} style={{ marginTop: 10 }}>
-              Save
-            </Button>
-            <Button onPress={() => { setModalVisible(false); setPdfFile(null); }} style={{ marginTop: 10 }}>
-              Cancel
-            </Button>
-          </View>
-        </View>
-      </Modal>
+        <BackButton />
+        <Text style={[styles.title, { color: colors.primary }]}>Health Records</Text>
 
-      {showDatePicker && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display={Platform.OS === "ios" ? "inline" : "default"}
-          onChange={handleDateConfirm}
+        <HealthCard 
+          title="Heart Rate" 
+          value={getLatestValue("heart_rate")} 
+          unit="bpm" 
+          icon="heart-pulse" 
+          color="#E57373" 
         />
-      )}
+        <HealthCard 
+          title="Blood Pressure" 
+          value={getLatestValue("blood_pressure")} 
+          unit="mmHg" 
+          icon="heart" 
+          color="#64B5F6" 
+        />
+        <HealthCard 
+          title="Glucose Level" 
+          value={getLatestValue("blood_glucose")} 
+          unit="mg/dL" 
+          icon="test-tube" 
+          color="#81C784" 
+        />
+        <HealthCard 
+          title="Oxygen Saturation" 
+          value={getLatestValue("oxygen_saturation")} 
+          unit="%" 
+          icon="weather-windy" 
+          color="#FFD54F" 
+        />
+
+        {heartRateData.data.length > 0 && (
+          <HealthChart
+            title="Heart Rate Trends"
+            labels={heartRateData.labels}
+            data={heartRateData.data}
+            color="#E57373"
+          />
+        )}
+        
+        {glucoseData.data.length > 0 && (
+          <HealthChart
+            title="Glucose Levels (Past Week)"
+            labels={glucoseData.labels}
+            data={glucoseData.data}
+            color="#81C784"
+          />
+        )}
+      </ScrollView>
 
       <FAB
         icon="plus"
-        style={[
-          styles.fab,
-          snackbarVisible && { bottom: 90 },
-        ]}
-        onPress={() => setModalVisible(true)}
+        style={styles.fab}
+        onPress={openAddModal}
+        label="Add Record"
       />
 
-      <CustomSnackbar
-        visible={snackbarVisible}
-        onDismiss={() => setSnackbarVisible(false)}
-        duration={5000}
-        action={{
-          label: "Undo",
-          onPress: undoDelete,
-        }}
-        style={{ marginBottom: 30, elevation: 6, backgroundColor: "white" }}
-      >
-        File deleted
+      {/* Add Record Modal */}
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <CustomCard style={styles.modalCard}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitle}>Add Health Record</Text>
+
+              {/* Elder Selection */}
+              {elders.length > 1 && (
+                <>
+                  <Text style={styles.sectionLabel}>Select Elder *</Text>
+                  <View style={styles.elderSelection}>
+                    {elders.map((elder) => (
+                      <Button
+                        key={elder.id}
+                        mode={selectedElderId === elder.id ? "contained" : "outlined"}
+                        onPress={() => setSelectedElderId(elder.id)}
+                        style={styles.elderButton}
+                      >
+                        {elder.full_name}
+                      </Button>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              <Text style={styles.sectionLabel}>Select Category *</Text>
+              <View style={styles.categoryGrid}>
+                {healthCategories.map((category) => (
+                  <Button
+                    key={category.id}
+                    mode={selectedCategory === category.id ? "contained" : "outlined"}
+                    onPress={() => {
+                      setSelectedCategory(category.id);
+                      setValue("");
+                      setValue2("");
+                    }}
+                    style={styles.categoryButton}
+                    icon={category.icon}
+                    contentStyle={styles.categoryButtonContent}
+                  >
+                    {category.label}
+                  </Button>
+                ))}
+              </View>
+
+              {selectedCategory && (() => {
+                const category = getSelectedCategory();
+                return category ? (
+                  <View style={styles.valueSection}>
+                    <Text style={styles.sectionLabel}>
+                      Enter Value ({category.unit}) *
+                    </Text>
+                    
+                    {category.type === "dual" ? (
+                      <View style={styles.dualValueRow}>
+                        <TextInput
+                          label={category.placeholder1}
+                          value={value}
+                          onChangeText={setValue}
+                          style={[styles.input, styles.halfInput]}
+                          mode="outlined"
+                          keyboardType="numeric"
+                          placeholder="120"
+                        />
+                        <Text style={styles.slashText}>/</Text>
+                        <TextInput
+                          label={category.placeholder2}
+                          value={value2}
+                          onChangeText={setValue2}
+                          style={[styles.input, styles.halfInput]}
+                          mode="outlined"
+                          keyboardType="numeric"
+                          placeholder="80"
+                        />
+                      </View>
+                    ) : (
+                      <TextInput
+                        label={`${category.label} Value`}
+                        value={value}
+                        onChangeText={setValue}
+                        style={styles.input}
+                        mode="outlined"
+                        keyboardType="decimal-pad"
+                        placeholder={category.placeholder}
+                      />
+                    )}
+
+                    <TextInput
+                      label="Notes (optional)"
+                      value={notes}
+                      onChangeText={setNotes}
+                      style={styles.input}
+                      mode="outlined"
+                      multiline
+                      numberOfLines={2}
+                      placeholder="Add any additional notes..."
+                    />
+                  </View>
+                ) : null;
+              })()}
+
+              <View style={styles.modalButtons}>
+                <Button
+                  mode="outlined"
+                  onPress={() => {
+                    setModalVisible(false);
+                    resetForm();
+                  }}
+                  style={{ flex: 1 }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  mode="contained" 
+                  onPress={handleAdd}
+                  style={{ flex: 1, marginLeft: 8 }}
+                  disabled={!selectedCategory || !value}
+                >
+                  Add Record
+                </Button>
+              </View>
+            </ScrollView>
+          </CustomCard>
+        </View>
+      </Modal>
+
+      <CustomSnackbar visible={snackbarVisible} onDismiss={() => setSnackbarVisible(false)}>
+        {snackbarMsg}
       </CustomSnackbar>
     </View>
   );
@@ -234,73 +431,97 @@ export default function HealthRecords() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
+    backgroundColor: "#F5F5F5",
   },
   scrollContent: {
-    paddingBottom: 120,
-    paddingHorizontal: 0,
-  },
-  header: {
-    fontSize: 24,
-    fontFamily: "Poppins_700Bold",
-    marginVertical: 20,
-    textShadowColor: "rgba(0, 0, 0, 0.3)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-    textAlign: "center",
-  },
-  section: {
-    marginBottom: 30,
-    paddingLeft: 15,
-  },
-  dateLabel: {
-    fontSize: 18,
-    fontFamily: "Poppins_600SemiBold",
-    marginBottom: 10,
-  },
-  cardRow: {
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    flexDirection: "row",
-  },
-  card: {
-    width: CARD_WIDTH,
-    borderRadius: 10,
-    marginRight: 15,
-    elevation: 2,
-  },
-  image: {
-    width: "100%",
-    height: 100,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 100,
   },
   title: {
-    fontSize: 14,
-    fontFamily: "Poppins_500Medium",
-    marginTop: 5,
+    fontSize: 24,
+    fontFamily: "Poppins_700Bold",
+    textAlign: "center",
+    marginBottom: 20,
   },
   fab: {
     position: "absolute",
     right: 20,
-    bottom: 30,
-    backgroundColor: "#007bff",
+    bottom: 20,
+    backgroundColor: "#4CAF50",
   },
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: "#000000aa",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
-  modalContent: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
+  modalCard: {
+    width: "100%",
+    maxWidth: 400,
     padding: 20,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: "Poppins_700Bold",
-    marginBottom: 15,
+    marginBottom: 20,
     textAlign: "center",
+  },
+  input: {
+    marginBottom: 12,
+  },
+  sectionLabel: {
+    fontSize: 16,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#333",
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 16,
+  },
+  categoryButton: {
+    flex: 1,
+    minWidth: "48%",
+    marginBottom: 8,
+  },
+  categoryButtonContent: {
+    paddingVertical: 8,
+  },
+  valueSection: {
+    marginTop: 8,
+  },
+  dualValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  halfInput: {
+    flex: 1,
+  },
+  slashText: {
+    fontSize: 24,
+    fontFamily: "Poppins_700Bold",
+    color: "#666",
+    marginBottom: 12,
+  },
+  elderSelection: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 16,
+  },
+  elderButton: {
+    flex: 1,
+    minWidth: "45%",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
   },
 });

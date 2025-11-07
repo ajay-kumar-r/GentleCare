@@ -41,6 +41,7 @@ class ElderProfile(db.Model):
     health_records = db.relationship('HealthRecord', backref='elder', cascade='all, delete-orphan')
     meals = db.relationship('Meal', backref='elder', cascade='all, delete-orphan')
     appointments = db.relationship('Appointment', backref='elder', cascade='all, delete-orphan')
+    prescriptions = db.relationship('Prescription', backref='elder', cascade='all, delete-orphan')
     notifications = db.relationship('Notification', backref='elder', cascade='all, delete-orphan')
 
 class CaretakerProfile(db.Model):
@@ -150,6 +151,20 @@ class Notification(db.Model):
     message = db.Column(db.Text, nullable=False)
     notification_type = db.Column(db.String(50))  # 'medication', 'appointment', 'health', 'emergency'
     is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Prescription(db.Model):
+    """Prescriptions and medical documents"""
+    __tablename__ = 'prescriptions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    elder_id = db.Column(db.Integer, db.ForeignKey('elder_profiles.id'), nullable=False)
+    doctor_name = db.Column(db.String(100))
+    date = db.Column(db.Date, nullable=False)
+    diagnosis = db.Column(db.String(200))
+    medicines = db.Column(db.Text)  # JSON string of medicines list
+    notes = db.Column(db.Text)
+    image_path = db.Column(db.String(500))  # Path to prescription image
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class LocationLog(db.Model):
