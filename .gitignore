@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+
+# Node / Expo
+Client/node_modules/
+Client/.expo/
+Client/.expo-shared/
+Client/dist/
+
+# Python
+Server/venv/
+Server/__pycache__/
+Server/*.pyc
+Server/instance/*.db
+
+# Secrets / env
+.env
+.env.*
+Server/*.json
+!Server/API_DOCUMENTATION.md

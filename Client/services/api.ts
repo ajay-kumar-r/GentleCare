@@ -3,11 +3,13 @@
  * Handles all backend communication with authentication and real-time sync
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import io from 'socket.io-client';
 
-// Base API URL - update this to your Mac's IP
-const API_BASE_URL = 'http://192.168.1.65:5001';
-const SOCKET_URL = 'http://192.168.1.65:5001';
+// Use env-configured backend URL, with simulator-friendly defaults for local dev.
+const defaultLocalApi = Platform.OS === 'android' ? 'http://10.0.2.2:5001' : 'http://127.0.0.1:5001';
+export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || defaultLocalApi).replace(/\/$/, '');
+const SOCKET_URL = API_BASE_URL;
 
 // Socket instance
 let socket: any = null;

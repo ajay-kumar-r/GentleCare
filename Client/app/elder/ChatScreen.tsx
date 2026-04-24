@@ -11,13 +11,11 @@ import {
 import { Text, IconButton, useTheme, Avatar } from "react-native-paper";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Audio } from "expo-audio";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import BackButton from "../components/BackButton";
+import { API_BASE_URL } from "../../services/api";
 
-// Use the local Flask server when running locally. If you need to reach
-// the server from a device on the same LAN, change this to your machine's
-// LAN IP (for example: "http://192.168.1.65:5000").
-const API_URL = "http://192.168.1.65:5001";
+const API_URL = API_BASE_URL;
 
 export default function ChatScreen() {
   const { name } = useLocalSearchParams();

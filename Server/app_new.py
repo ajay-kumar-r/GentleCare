@@ -18,11 +18,18 @@ from google.cloud import speech, texttospeech
 import google.generativeai as genai
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
-app.config['JWT_SECRET_KEY'] = 'jwt-secret-key-change-in-production'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+INSTANCE_DIR = os.path.join(BASE_DIR, 'instance')
+os.makedirs(INSTANCE_DIR, exist_ok=True)
+
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'dev-jwt-secret-key-change-me')
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=30)
 app.config['JWT_IDENTITY_CLAIM'] = 'sub'  # Allow integer user IDs
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gentlecare.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+    'DATABASE_URL',
+    f"sqlite:///{os.path.join(INSTANCE_DIR, 'gentlecare.db')}"
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 CORS(app)
@@ -32,13 +39,23 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 db.init_app(app)
 
 # Google Cloud credentials
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "gentecare-c5d5a11b6915.json"
+google_creds_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+if not google_creds_path:
+    default_creds = os.path.join(BASE_DIR, 'gentecare-c5d5a11b6915.json')
+    if os.path.exists(default_creds):
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = default_creds
 
 # Gemini AI setup
-API_KEY = "AIzaSyB2PhOsz-fWJIN2VvzTGwQsaG-XsyueRUw"
-genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel("gemini-1.5-pro-latest")
+API_KEY = os.getenv("GEMINI_API_KEY", "")
+model = None
+if API_KEY:
+    genai.configure(api_key=API_KEY)
+    model = genai.GenerativeModel("gemini-1.5-pro-latest")
 conversation_history = []
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "ok"}), 200
 
 # JWT error handlers
 @jwt.invalid_token_loader
@@ -98,7 +115,7 @@ def signup():
         
         db.session.commit()
         
-        access_token = create_access_token(identity=user.id)
+        access_token = create_access_token(identity=str(user.id))
         return jsonify({
             "message": "User registered successfully",
             "access_token": access_token,
@@ -166,7 +183,7 @@ def login():
 def link_caretaker():
     """Link an elder to a caretaker"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         data = request.json
         caretaker_email = data.get('caretaker_email')
         
@@ -259,7 +276,7 @@ def get_medications():
 def add_medication():
     """Add new medication"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         data = request.json
         user = User.query.get(user_id)
         
@@ -305,7 +322,7 @@ def add_medication():
 def log_medication(med_id):
     """Log medication taken"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         data = request.json
         
         medication = Medication.query.get_or_404(med_id)
@@ -421,7 +438,7 @@ def delete_medication(med_id):
 def get_health_records():
     """Get health records"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         elder_id = request.args.get('elder_id')
         record_type = request.args.get('type')
@@ -457,7 +474,7 @@ def get_health_records():
 def add_health_record():
     """Add health record"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         data = request.json
         user = User.query.get(user_id)
         
@@ -526,7 +543,7 @@ def delete_health_record(record_id):
 def get_meals():
     """Get meals"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         date_str = request.args.get('date')
         
@@ -598,7 +615,7 @@ def consume_meal(meal_id):
 def get_appointments():
     """Get appointments"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if user.user_type == 'elder':
@@ -631,7 +648,7 @@ def get_appointments():
 def add_appointment():
     """Add appointment"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         data = request.json
         user = User.query.get(user_id)
         
@@ -748,7 +765,7 @@ def delete_appointment(appointment_id):
 def get_notifications():
     """Get user notifications"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         notifications = Notification.query.filter_by(recipient_user_id=user_id).order_by(Notification.created_at.desc()).limit(50).all()
         
         return jsonify({
@@ -789,7 +806,7 @@ def mark_notification_read(notif_id):
 def update_location():
     """Update elder location"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         data = request.json
         user = User.query.get(user_id)
         
@@ -853,7 +870,7 @@ def get_location(elder_id):
 def get_emergency_contacts():
     """Get emergency contacts"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if user.user_type == 'elder':
@@ -883,7 +900,7 @@ def get_emergency_contacts():
 def add_emergency_contact():
     """Add emergency contact"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         data = request.json
         user = User.query.get(user_id)
         
@@ -982,6 +999,12 @@ def delete_emergency_contact(contact_id):
 def transcribe():
     """Speech to text"""
     try:
+        if 'file' not in request.files:
+            return jsonify({"error": "Audio file is required"}), 400
+
+        if not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+            return jsonify({"error": "Speech-to-text is not configured on the server"}), 503
+
         audio_file = request.files['file']
         audio_bytes = audio_file.read()
         
@@ -1006,6 +1029,9 @@ def transcribe():
 def chat():
     """Chat with Gemini AI"""
     try:
+        if model is None:
+            return jsonify({"error": "Chatbot is not configured on the server"}), 503
+
         data = request.json
         user_message = data.get("message", "")
         
@@ -1025,6 +1051,9 @@ def chat():
 def speak():
     """Text to speech"""
     try:
+        if not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+            return jsonify({"error": "Text-to-speech is not configured on the server"}), 503
+
         data = request.json
         text = data.get("text", "")
         
@@ -1257,4 +1286,6 @@ if __name__ == "__main__":
         print("Database tables created successfully!")
     
     # Run with SocketIO
-    socketio.run(app, host='0.0.0.0', port=5001, debug=True)
+    port = int(os.getenv('PORT', '5001'))
+    debug_mode = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
+    socketio.run(app, host='0.0.0.0', port=port, debug=debug_mode)

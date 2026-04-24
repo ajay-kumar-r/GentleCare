@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, Text as RNText, TouchableOpacity } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { Text, useTheme, Avatar, Divider } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
 import CustomCard from "../components/CustomCard";
 import BackButton from "../components/BackButton";
+import LocationMap from "../../components/Caretaker/LocationMap";
 
 export default function LocationTracker() {
   const { colors } = useTheme();
@@ -14,7 +14,6 @@ export default function LocationTracker() {
     longitude: 80.236362,
   });
 
-  const [lastLocation, setLastLocation] = useState(location);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [movementStatus, setMovementStatus] = useState("Stationary");
   const [mapExpanded, setMapExpanded] = useState(false);
@@ -34,7 +33,6 @@ export default function LocationTracker() {
         Math.pow(newLocation.longitude - location.longitude, 2)
       );
 
-      setLastLocation(location);
       setLocation(newLocation);
       setLastUpdated(new Date());
 
@@ -77,21 +75,7 @@ export default function LocationTracker() {
       </CustomCard>
 
       <View style={[styles.mapContainer, mapExpanded && styles.mapContainerExpanded]}>
-        <MapView
-          style={styles.map}
-          region={{
-            latitude: location.latitude,
-            longitude: location.longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          }}
-        >
-          <Marker
-            coordinate={location}
-            title="Ravi Sharma"
-            description="Elder's current location"
-          />
-        </MapView>
+        <LocationMap location={location} />
         <TouchableOpacity
           style={styles.expandIcon}
           onPress={() => setMapExpanded(!mapExpanded)}
@@ -157,9 +141,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
     marginBottom: 0,
     borderRadius: 0,
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
   },
   expandIcon: {
     position: "absolute",

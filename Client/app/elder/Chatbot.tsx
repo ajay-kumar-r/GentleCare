@@ -10,15 +10,11 @@ import {
   BitRateStrategy
 } from "expo-audio";
 import { Audio } from "expo-av";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import BackButton from "../components/BackButton";
+import { API_BASE_URL } from "../../services/api";
 
-// Use your Mac's local IP address so the mobile device can reach the server
-import CustomCard from "../components/Caretaker/QuickAccessCard";
-import CustomSnackbar from "../components/Caretaker/QuickAccessCard";
-import theme from "../components/theme";
-
-const API_URL = "http://192.168.1.65:5001";
+const API_URL = API_BASE_URL;
 
 export default function ChatbotVoice() {
   const { colors } = useTheme();
@@ -142,7 +138,11 @@ export default function ChatbotVoice() {
       });
 
       const transcribeData = await transcribeRes.json();
-      const userMessage = transcribeData.transcription;
+      const userMessage = transcribeData.transcript || transcribeData.transcription || "";
+
+      if (!userMessage.trim()) {
+        throw new Error("Transcription returned empty text");
+      }
 
       const chatRes = await fetch(`${API_URL}/chat`, {
         method: "POST",
