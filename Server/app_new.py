@@ -14,6 +14,10 @@ import io
 import wave
 import json
 
+# Render is currently using Python 3.14, where the protobuf upb extension can fail to import.
+# Force the pure-Python protobuf implementation before importing Google Cloud clients.
+os.environ.setdefault('PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION', 'python')
+
 # Google Cloud imports
 from google.cloud import speech, texttospeech
 import google.generativeai as genai
