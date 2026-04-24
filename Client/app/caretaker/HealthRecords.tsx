@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -20,7 +20,7 @@ import HealthChart from "../components/Elder/HealthChart";
 import CustomSnackbar from "../components/CustomSnackbar";
 import CustomCard from "../components/CustomCard";
 import BackButton from "../components/BackButton";
-import { healthAPI } from "../../services/api";
+import { healthAPI, socketService } from "../../services/api";
 
 interface HealthRecord {
   id: number;
@@ -41,11 +41,8 @@ export default function HealthRecords() {
   const { colors } = useTheme();
 
   const [records, setRecords] = useState<HealthRecord[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState<HealthRecord | null>(null);
   
   // Elder selection
   const [elders, setElders] = useState<Elder[]>([]);
@@ -71,10 +68,43 @@ export default function HealthRecords() {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
 
+  const fetchRecords = useCallback(async () => {
+    try {
+      const params: any = { days: 7 };
+      if (selectedElderId) {
+        params.elder_id = selectedElderId;
+      }
+
+      const response = await healthAPI.getRecords(params);
+      const fetchedRecords = response.records || [];
+      setRecords(fetchedRecords);
+    } catch (error: any) {
+      console.error("Error fetching health records:", error);
+      setRecords([]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [selectedElderId]);
+
   useEffect(() => {
     loadUserData();
-    fetchRecords();
   }, []);
+
+  useEffect(() => {
+    fetchRecords();
+
+    const refreshFromRealtime = () => {
+      fetchRecords();
+    };
+
+    socketService.on('health_record_added', refreshFromRealtime);
+    socketService.on('health_record_deleted', refreshFromRealtime);
+
+    return () => {
+      socketService.off('health_record_added');
+      socketService.off('health_record_deleted');
+    };
+  }, [fetchRecords]);
 
   const loadUserData = async () => {
     try {
@@ -91,22 +121,6 @@ export default function HealthRecords() {
       }
     } catch (error) {
       console.error('Error loading user data:', error);
-    }
-  };
-
-  const fetchRecords = async () => {
-    try {
-      const response = await healthAPI.getRecords({ days: 7 });
-      const fetchedRecords = response.records || [];
-      
-      // Always use fetched records
-      setRecords(fetchedRecords);
-    } catch (error: any) {
-      console.error("Error fetching health records:", error);
-      setRecords([]);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
     }
   };
 
@@ -197,29 +211,6 @@ export default function HealthRecords() {
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to add health record");
     }
-  };
-
-  const handleDelete = (record: HealthRecord) => {
-    Alert.alert(
-      "Delete Record",
-      `Are you sure you want to delete this ${record.type} record?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await healthAPI.delete(record.id);
-              showSnackbar("Record deleted successfully");
-              fetchRecords();
-            } catch (error: any) {
-              Alert.alert("Error", error.message || "Failed to delete record");
-            }
-          },
-        },
-      ]
-    );
   };
 
   const showSnackbar = (message: string) => {

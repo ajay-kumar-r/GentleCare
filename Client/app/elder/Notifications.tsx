@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl } from "react-native";
 import { Text, useTheme } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
 import BackButton from "../components/BackButton";
-import { notificationAPI } from "../../services/api";
-import notificationService, { SmartNotification } from "../../services/notificationService";
+import { notificationAPI, socketService } from "../../services/api";
+import notificationService from "../../services/notificationService";
 import CustomCard from "../components/CustomCard";
 
 interface Notification {
@@ -18,18 +18,9 @@ interface Notification {
 export default function Notifications() {
   const { colors } = useTheme();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchNotifications();
-    
-    // Refresh every 30 seconds to show new smart notifications
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       // Get smart local notifications
       const smartNotifs = await notificationService.getNotifications();
@@ -55,59 +46,33 @@ export default function Notifications() {
           created_at: n.created_at,
         })),
       ];
-      
-      // If no notifications, show sample data
-      if (combinedNotifs.length === 0) {
-        setNotifications([
-          {
-            id: -1,
-            message: "Time to take your medication: Paracetamol 500mg",
-            type: "medication",
-            is_read: false,
-            created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-          },
-          {
-            id: -2,
-            message: "Upcoming appointment with Dr. Emily Thompson tomorrow at 2:00 PM",
-            type: "appointment",
-            is_read: false,
-            created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          },
-          {
-            id: -3,
-            message: "Your blood pressure reading looks good today!",
-            type: "health",
-            is_read: true,
-            created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-          },
-          {
-            id: -4,
-            message: "Reminder: Schedule your monthly health checkup",
-            type: "appointment",
-            is_read: true,
-            created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          },
-        ]);
-      } else {
-        setNotifications(combinedNotifs);
-      }
+      setNotifications(combinedNotifs);
     } catch (error: any) {
       console.error("Error fetching notifications:", error);
-      // Show sample data on error
-      setNotifications([
-        {
-          id: -1,
-          message: "Sample notification. Connect to server for real notifications.",
-          type: "system",
-          is_read: false,
-          created_at: new Date().toISOString(),
-        },
-      ]);
+      setNotifications([]);
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+
+    const refreshFromRealtime = () => {
+      fetchNotifications();
+    };
+
+    socketService.on('notification_created', refreshFromRealtime);
+    socketService.on('medication_logged', refreshFromRealtime);
+    
+    // Refresh every 30 seconds to show new smart notifications
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => {
+      clearInterval(interval);
+      socketService.off('notification_created');
+      socketService.off('medication_logged');
+    };
+  }, [fetchNotifications]);
 
   const onRefresh = () => {
     setRefreshing(true);

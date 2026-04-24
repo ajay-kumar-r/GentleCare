@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -10,7 +10,7 @@ import { Text, Card, useTheme } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
 import CustomSnackbar from "../components/CustomSnackbar";
 import BackButton from "../components/BackButton";
-import { notificationAPI } from "../../services/api";
+import { notificationAPI, socketService } from "../../services/api";
 
 interface Notification {
   id: number;
@@ -23,73 +23,37 @@ interface Notification {
 export default function CaretakerNotifications() {
   const { colors } = useTheme();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
 
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const response = await notificationAPI.getAll();
       const fetchedNotifications = response.notifications || [];
-      
-      // If no notifications, show sample data
-      if (fetchedNotifications.length === 0) {
-        setNotifications([
-          {
-            id: -1,
-            message: "John Elder missed medication: Paracetamol at 10:00 AM",
-            type: "medication",
-            is_read: false,
-            created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-          },
-          {
-            id: -2,
-            message: "Upcoming appointment: Cardiology Checkup in 3 days",
-            type: "appointment",
-            is_read: false,
-            created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          },
-          {
-            id: -3,
-            message: "New health record added: Blood Pressure 120/80 mmHg",
-            type: "health",
-            is_read: true,
-            created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-          },
-          {
-            id: -4,
-            message: "Emergency contact Mary Caretaker updated successfully",
-            type: "system",
-            is_read: true,
-            created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          },
-        ]);
-      } else {
-        setNotifications(fetchedNotifications);
-      }
+      setNotifications(fetchedNotifications);
     } catch (error: any) {
       console.error("Error fetching notifications:", error);
-      // Show sample data on error
-      setNotifications([
-        {
-          id: -1,
-          message: "This is sample notification data. Connect to server to see real notifications.",
-          type: "system",
-          is_read: false,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-      showSnackbar("Showing sample data");
+      setNotifications([]);
+      showSnackbar(error.message || "Failed to load notifications");
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+
+    const refreshFromRealtime = () => {
+      fetchNotifications();
+    };
+
+    socketService.on('notification_created', refreshFromRealtime);
+
+    return () => {
+      socketService.off('notification_created');
+    };
+  }, [fetchNotifications]);
 
   const onRefresh = () => {
     setRefreshing(true);

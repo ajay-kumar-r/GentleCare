@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -54,21 +54,7 @@ export default function CaretakerMedications() {
     instructions: '',
   });
 
-  useEffect(() => {
-    loadMedications();
-
-    // TODO: Implement real-time updates when socket service is available
-    // socketService.on('medication_logged', (data: any) => {
-    //   showSnackbar(`✅ ${data.elder_name || 'Elder'} took ${data.medication_name}`);
-    //   loadMedications();
-    // });
-
-    // return () => {
-    //   socketService.off('medication_logged');
-    // };
-  }, []);
-
-  const loadMedications = async () => {
+  const loadMedications = useCallback(async () => {
     try {
       setLoading(true);
       const response = await medicationAPI.getAll();
@@ -83,7 +69,21 @@ export default function CaretakerMedications() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadMedications();
+
+    // TODO: Implement real-time updates when socket service is available
+    // socketService.on('medication_logged', (data: any) => {
+    //   showSnackbar(`✅ ${data.elder_name || 'Elder'} took ${data.medication_name}`);
+    //   loadMedications();
+    // });
+
+    // return () => {
+    //   socketService.off('medication_logged');
+    // };
+  }, [loadMedications]);
 
   const onRefresh = async () => {
     setRefreshing(true);

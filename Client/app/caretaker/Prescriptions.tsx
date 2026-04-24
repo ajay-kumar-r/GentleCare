@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   ScrollView,
@@ -21,7 +21,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import CustomSnackbar from "../components/CustomSnackbar";
 import CustomCard from "../components/CustomCard";
 import BackButton from "../components/BackButton";
-import { prescriptionAPI } from "../../services/api";
+import { prescriptionAPI, socketService } from "../../services/api";
 
 interface Prescription {
   id: number;
@@ -38,7 +38,6 @@ export default function Prescriptions() {
   const { colors } = useTheme();
 
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -56,69 +55,37 @@ export default function Prescriptions() {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
 
-  useEffect(() => {
-    fetchPrescriptions();
-  }, []);
-
-  const fetchPrescriptions = async () => {
+  const fetchPrescriptions = useCallback(async () => {
     try {
       const response = await prescriptionAPI.getAll();
       const fetchedPrescriptions = response.prescriptions || [];
-      
-      // If no prescriptions, show sample data
-      if (fetchedPrescriptions.length === 0) {
-        setPrescriptions([
-          {
-            id: -1,
-            elder_id: 1,
-            doctor_name: "Dr. Sarah Johnson",
-            date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            diagnosis: "Hypertension Management",
-            medicines: JSON.stringify([
-              "Amlodipine 5mg - Once daily",
-              "Lisinopril 10mg - Once daily in the morning"
-            ]),
-            notes: "Monitor blood pressure daily. Follow up in 2 weeks.",
-          },
-          {
-            id: -2,
-            elder_id: 1,
-            doctor_name: "Dr. Michael Chen",
-            date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-            diagnosis: "Type 2 Diabetes",
-            medicines: JSON.stringify([
-              "Metformin 500mg - Twice daily with meals",
-              "Glimepiride 2mg - Once daily before breakfast"
-            ]),
-            notes: "Check blood glucose levels before meals. Maintain healthy diet.",
-          },
-        ]);
-      } else {
-        setPrescriptions(fetchedPrescriptions);
-      }
+      setPrescriptions(fetchedPrescriptions);
     } catch (error: any) {
       console.error("Error fetching prescriptions:", error);
-      // Show sample data on error
-      setPrescriptions([
-        {
-          id: -1,
-          elder_id: 1,
-          doctor_name: "Dr. Sarah Johnson",
-          date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-          diagnosis: "Hypertension Management",
-          medicines: JSON.stringify([
-            "Amlodipine 5mg - Once daily",
-            "Lisinopril 10mg - Once daily in the morning"
-          ]),
-          notes: "Monitor blood pressure daily. Follow up in 2 weeks.",
-        },
-      ]);
-      showSnackbar("Showing sample data");
+      setPrescriptions([]);
+      showSnackbar(error.message || "Failed to load prescriptions");
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchPrescriptions();
+
+    const refreshFromRealtime = () => {
+      fetchPrescriptions();
+    };
+
+    socketService.on('prescription_added', refreshFromRealtime);
+    socketService.on('prescription_updated', refreshFromRealtime);
+    socketService.on('prescription_deleted', refreshFromRealtime);
+
+    return () => {
+      socketService.off('prescription_added');
+      socketService.off('prescription_updated');
+      socketService.off('prescription_deleted');
+    };
+  }, [fetchPrescriptions]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -140,11 +107,6 @@ export default function Prescriptions() {
   };
 
   const openEditModal = (prescription: Prescription) => {
-    if (prescription.id < 0) {
-      Alert.alert("Cannot Edit", "Sample data cannot be edited. Add real prescriptions to manage them.");
-      return;
-    }
-    
     setSelectedPrescription(prescription);
     setDoctorName(prescription.doctor_name || "");
     setDate(new Date(prescription.date));
@@ -240,11 +202,6 @@ export default function Prescriptions() {
   };
 
   const handleDelete = (prescription: Prescription) => {
-    if (prescription.id < 0) {
-      Alert.alert("Cannot Delete", "Sample data cannot be deleted. Add real prescriptions to manage them.");
-      return;
-    }
-    
     Alert.alert(
       "Delete Prescription",
       `Are you sure you want to delete this prescription from ${new Date(

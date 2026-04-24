@@ -11,6 +11,7 @@ import { Slot } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { getTheme } from "./components/theme";
 import notificationService from "../services/notificationService";
+import { socketService, storage } from "../services/api";
 
 export default function Layout() {
   let [fontsLoaded] = useFonts({ Poppins_700Bold, Poppins_400Regular });
@@ -22,6 +23,11 @@ export default function Layout() {
   useEffect(() => {
     const initNotifications = async () => {
       try {
+        const existingUser = await storage.getUser();
+        if (existingUser?.id) {
+          socketService.connect(existingUser.id);
+        }
+
         // Register for push notifications
         await notificationService.registerForPushNotifications();
         

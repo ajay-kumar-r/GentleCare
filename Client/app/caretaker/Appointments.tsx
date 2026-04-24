@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -19,7 +19,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import CustomSnackbar from "../components/CustomSnackbar";
 import CustomCard from "../components/CustomCard";
 import BackButton from "../components/BackButton";
-import { appointmentAPI } from "../../services/api";
+import { appointmentAPI, socketService } from "../../services/api";
 
 interface Appointment {
   id: number;
@@ -38,7 +38,6 @@ export default function Appointments() {
   const { colors } = useTheme();
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -57,68 +56,37 @@ export default function Appointments() {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
 
-  useEffect(() => {
-    fetchAppointments();
-  }, []);
-
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
     try {
       const response = await appointmentAPI.getAll();
       const fetchedAppointments = response.appointments || [];
-      
-      // If no appointments, show sample data
-      if (fetchedAppointments.length === 0) {
-        setAppointments([
-          {
-            id: -1,
-            elder_id: 1,
-            elder_name: "John Elder",
-            title: "Cardiology Checkup",
-            doctor_name: "Dr. Emily Thompson",
-            location: "City Medical Center, Room 304",
-            appointment_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-            duration_minutes: 30,
-            status: "scheduled",
-            notes: "Bring previous ECG reports and current medication list.",
-          },
-          {
-            id: -2,
-            elder_id: 1,
-            elder_name: "John Elder",
-            title: "Diabetes Follow-up",
-            doctor_name: "Dr. Michael Chen",
-            location: "Downtown Clinic",
-            appointment_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-            duration_minutes: 45,
-            status: "scheduled",
-            notes: "Fasting blood sugar test required before appointment.",
-          },
-        ]);
-      } else {
-        setAppointments(fetchedAppointments);
-      }
+      setAppointments(fetchedAppointments);
     } catch (error: any) {
       console.error("Error fetching appointments:", error);
-      // Show sample data on error
-      setAppointments([
-        {
-          id: -1,
-          elder_id: 1,
-          elder_name: "John Elder",
-          title: "General Checkup",
-          doctor_name: "Dr. Sarah Wilson",
-          location: "Community Health Center",
-          appointment_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-          duration_minutes: 30,
-          status: "scheduled",
-        },
-      ]);
-      showSnackbar("Showing sample data");
+      setAppointments([]);
+      showSnackbar(error.message || "Failed to load appointments");
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchAppointments();
+
+    const refreshFromRealtime = () => {
+      fetchAppointments();
+    };
+
+    socketService.on('appointment_added', refreshFromRealtime);
+    socketService.on('appointment_updated', refreshFromRealtime);
+    socketService.on('appointment_deleted', refreshFromRealtime);
+
+    return () => {
+      socketService.off('appointment_added');
+      socketService.off('appointment_updated');
+      socketService.off('appointment_deleted');
+    };
+  }, [fetchAppointments]);
 
   const onRefresh = () => {
     setRefreshing(true);

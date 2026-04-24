@@ -1,5 +1,5 @@
-import { View, StyleSheet, Animated, Image } from "react-native";
-import { Button, Text, useTheme } from "react-native-paper";
+import { View, StyleSheet, Animated } from "react-native";
+import { Button, useTheme } from "react-native-paper";
 import { useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -42,7 +42,7 @@ export default function LandingPage() {
         }),
       ]),
     ]).start(() => SplashScreen.hideAsync());
-  }, []);
+  }, [fadeAnimImage, fadeAnimText, slideAnimImage, slideAnimText]);
 
   return (
     <LinearGradient colors={[colors.primary, colors.secondary]} style={styles.gradient}>

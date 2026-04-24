@@ -1,14 +1,7 @@
-import React, { useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, StyleSheet, Animated, TouchableOpacity, Text, ActivityIndicator } from "react-native";
 import { IconButton, useTheme } from "react-native-paper";
-import { 
-  useAudioRecorder, 
-  AudioModule,
-  AndroidOutputFormat,
-  AndroidAudioEncoder,
-  AudioQuality,
-  BitRateStrategy
-} from "expo-audio";
+import { useAudioRecorder, AudioModule } from "expo-audio";
 import { Audio } from "expo-av";
 import * as FileSystem from "expo-file-system/legacy";
 import BackButton from "../components/BackButton";
@@ -18,36 +11,57 @@ const API_URL = API_BASE_URL;
 
 export default function ChatbotVoice() {
   const { colors } = useTheme();
-  const audioRecorder = useAudioRecorder(
-    {
+  const audioRecorder = useAudioRecorder({
+    extension: ".m4a",
+    sampleRate: 44100,
+    numberOfChannels: 1,
+    bitRate: 128000,
+    android: {
       extension: ".m4a",
+      outputFormat: "mpeg4",
+      audioEncoder: "aac",
       sampleRate: 44100,
-      numberOfChannels: 1,
-      bitRate: 128000,
-      android: {
-        extension: ".m4a",
-        outputFormat: "mpeg4",
-        audioEncoder: "aac",
-        sampleRate: 44100,
-      },
-      ios: {
-        extension: ".m4a",
-        audioQuality: 0x7F, // High quality (127)
-        sampleRate: 44100,
-        linearPCMBitDepth: 16,
-        linearPCMIsBigEndian: false,
-        linearPCMIsFloat: false,
-      },
-      web: {},
-    }
-  );
+    },
+    ios: {
+      extension: ".m4a",
+      audioQuality: 0x7f,
+      sampleRate: 44100,
+      linearPCMBitDepth: 16,
+      linearPCMIsBigEndian: false,
+      linearPCMIsFloat: false,
+    },
+    web: {},
+  });
+
   const [isRecording, setIsRecording] = useState(false);
   const [chatbotResponse, setChatbotResponse] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isAiReady, setIsAiReady] = useState(true);
   const waveforms = useRef(Array(5).fill(null).map(() => new Animated.Value(1))).current;
 
+  useEffect(() => {
+    const checkCapabilities = async () => {
+      try {
+        const response = await fetch(`${API_URL}/capabilities`);
+        if (!response.ok) return;
+        const data = await response.json();
+        const ai = data.ai || {};
+        const ready = !!(ai.chatbot && ai.speech_to_text && ai.text_to_speech);
+        setIsAiReady(ready);
+        if (!ready) {
+          setErrorMessage("Voice AI services are not fully configured on the server.");
+        }
+      } catch {
+        // Keep default behavior if capability endpoint is unreachable.
+      }
+    };
+
+    checkCapabilities();
+  }, []);
+
   const animateWaveform = () => {
-    waveforms.forEach((waveform, i) => {
+    waveforms.forEach((waveform) => {
       Animated.loop(
         Animated.sequence([
           Animated.timing(waveform, {
@@ -67,19 +81,23 @@ export default function ChatbotVoice() {
 
   const startRecording = async () => {
     try {
+      if (!isAiReady) {
+        setErrorMessage("Voice AI services are not fully configured on the server.");
+        return;
+      }
+
+      setErrorMessage("");
       const permission = await AudioModule.requestRecordingPermissionsAsync();
       if (!permission.granted) {
         alert("Microphone permission is required!");
         return;
       }
 
-      // Set audio mode to allow recording on iOS using both APIs
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
       });
 
-      // Also set audio mode using AudioModule for expo-audio
       await AudioModule.setAudioModeAsync({
         allowsRecording: true,
         playsInSilentMode: true,
@@ -91,55 +109,39 @@ export default function ChatbotVoice() {
       animateWaveform();
     } catch (err) {
       console.error("Failed to start recording", err);
+      setErrorMessage("Failed to start recording");
     }
   };
 
   const stopRecording = async () => {
     setIsRecording(false);
     setLoading(true);
+    setErrorMessage("");
 
     try {
-      // Get the recording URI before stopping
-      const tempUri = audioRecorder.uri;
-      console.log("Recording URI before stop:", tempUri);
-      
-      if (!tempUri) {
-        throw new Error("No recording URI - recording may not have started properly");
-      }
-
-      // Read the file using FileSystem BEFORE stopping
-      const base64Audio = await FileSystem.readAsStringAsync(tempUri, {
-        encoding: "base64",
-      });
-      console.log("Recording read, size:", base64Audio.length, "chars");
-      
-      // Stop recording AFTER we've read the file
       await audioRecorder.stop();
-      
-      console.log("Recording stopped successfully");
-
-      // Convert base64 to blob for upload
-      const byteCharacters = atob(base64Audio);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      const recordingUri = audioRecorder.uri;
+      if (!recordingUri) {
+        throw new Error("No recording was captured. Please try again.");
       }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: "audio/m4a" });
 
-      // Create form data for upload with the blob
       const formData = new FormData();
-      formData.append("file", blob, "recording.m4a");
+      formData.append("file", {
+        uri: recordingUri,
+        name: "recording.m4a",
+        type: "audio/m4a",
+      } as any);
 
       const transcribeRes = await fetch(`${API_URL}/transcribe`, {
         method: "POST",
         body: formData,
-        // Don't set Content-Type header - let the browser set it with boundary
       });
-
       const transcribeData = await transcribeRes.json();
-      const userMessage = transcribeData.transcript || transcribeData.transcription || "";
+      if (!transcribeRes.ok) {
+        throw new Error(transcribeData.error || "Transcription failed");
+      }
 
+      const userMessage = transcribeData.transcript || transcribeData.transcription || "";
       if (!userMessage.trim()) {
         throw new Error("Transcription returned empty text");
       }
@@ -149,10 +151,15 @@ export default function ChatbotVoice() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMessage }),
       });
-
       const chatData = await chatRes.json();
-      const botReply = chatData.response;
+      if (!chatRes.ok) {
+        throw new Error(chatData.error || "Chat request failed");
+      }
 
+      const botReply = chatData.response;
+      if (!botReply) {
+        throw new Error("No response generated");
+      }
       setChatbotResponse(botReply);
 
       const speakRes = await fetch(`${API_URL}/speak`, {
@@ -160,29 +167,49 @@ export default function ChatbotVoice() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: botReply }),
       });
+      if (!speakRes.ok) {
+        const speakData = await speakRes.json().catch(() => ({}));
+        throw new Error(speakData.error || "Speech generation failed");
+      }
 
-      // Get audio blob and convert to playable format
       const audioBlob = await speakRes.blob();
-      
-      // Create a blob URL (works on web and mobile)
-      const blobUrl = URL.createObjectURL(audioBlob);
-      
-      // Play the audio directly from the blob URL
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: blobUrl },
-        { shouldPlay: true }
-      );
+      const reader = new FileReader();
 
-      await sound.playAsync();
-      
-      // Clean up the blob URL after playing
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          URL.revokeObjectURL(blobUrl);
-        }
-      });
-    } catch (err) {
+      reader.onload = async () => {
+        const result = String(reader.result || "");
+        const base64Audio = result.includes(",") ? result.split(",")[1] : result;
+        const audioPath = `${FileSystem.documentDirectory}chatbot-response.wav`;
+
+        await FileSystem.writeAsStringAsync(audioPath, base64Audio, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: audioPath },
+          { shouldPlay: true }
+        );
+
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            sound.unloadAsync();
+          }
+        });
+      };
+
+      reader.onerror = () => {
+        setErrorMessage("Unable to play voice response");
+      };
+
+      reader.readAsDataURL(audioBlob);
+    } catch (err: any) {
       console.error("Voice interaction failed:", err);
+      const message = err?.message || "Voice interaction failed";
+      setErrorMessage(message);
+      setChatbotResponse(
+        message.includes("configured")
+          ? "AI voice services are not configured on the server yet."
+          : "I could not process voice chat right now. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -193,7 +220,7 @@ export default function ChatbotVoice() {
       <BackButton />
       <View style={styles.mainContent}>
         {!isRecording ? (
-          <TouchableOpacity style={styles.micContainer} onPress={startRecording} disabled={loading}>
+          <TouchableOpacity style={styles.micContainer} onPress={startRecording} disabled={loading || !isAiReady}>
             <IconButton icon="microphone" size={80} iconColor={colors.primary} style={styles.micIcon} />
           </TouchableOpacity>
         ) : (
@@ -218,6 +245,12 @@ export default function ChatbotVoice() {
         <View style={{ marginTop: 20 }}>
           <ActivityIndicator size="small" color="#555" />
           <Text style={{ marginTop: 5 }}>Processing...</Text>
+        </View>
+      )}
+
+      {errorMessage !== "" && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{errorMessage}</Text>
         </View>
       )}
 
@@ -281,6 +314,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#fff",
     fontWeight: "bold",
+  },
+  errorContainer: {
+    position: "absolute",
+    bottom: 230,
+    backgroundColor: "#FDECEC",
+    padding: 12,
+    borderRadius: 10,
+    width: "85%",
+  },
+  errorText: {
+    color: "#B42318",
+    fontSize: 14,
   },
   responseContainer: {
     position: "absolute",

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { 
   View, 
   StyleSheet, 
@@ -9,7 +9,7 @@ import {
   ActivityIndicator
 } from "react-native";
 import { Text, IconButton, useTheme, Avatar } from "react-native-paper";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { Audio } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 import BackButton from "../components/BackButton";
@@ -19,7 +19,6 @@ const API_URL = API_BASE_URL;
 
 export default function ChatScreen() {
   const { name } = useLocalSearchParams();
-  const router = useRouter();
   const { colors } = useTheme();
   const soundObject = useRef(new Audio.Sound()).current;
 
@@ -37,17 +36,17 @@ export default function ChatScreen() {
         soundObject.unloadAsync();
       }
     };
-  }, []);
+  }, [soundObject]);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     if (flatListRef.current && messages.length > 0) {
       flatListRef.current.scrollToEnd({ animated: true });
     }
-  };
+  }, [messages.length]);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
   const handleSend = async () => {
     if (input.trim() === "") return;

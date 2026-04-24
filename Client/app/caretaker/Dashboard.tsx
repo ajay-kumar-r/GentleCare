@@ -4,7 +4,7 @@ import CustomCard from "../components/CustomCard";
 import { useRouter } from "expo-router";
 import QuickAccessCard from "../components/Caretaker/QuickAccessCard";
 import NotificationItem from "../components/Caretaker/NotificationItem";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
 
 export default function CaretakerDashboard() {
   const { colors } = useTheme();

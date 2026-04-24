@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -14,7 +14,7 @@ import {
 import CustomCard from "../components/CustomCard";
 import BackButton from "../components/BackButton";
 import CustomSnackbar from "../components/CustomSnackbar";
-import { medicationAPI } from "../../services/api";
+import { medicationAPI, socketService } from "../../services/api";
 
 export default function Medications() {
   const { colors } = useTheme();
@@ -24,12 +24,7 @@ export default function Medications() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load medications from backend
-  useEffect(() => {
-    loadMedications();
-  }, []);
-
-  const loadMedications = async () => {
+  const loadMedications = useCallback(async () => {
     try {
       setLoading(true);
       const response = await medicationAPI.getAll();
@@ -40,7 +35,28 @@ export default function Medications() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Load medications from backend
+  useEffect(() => {
+    loadMedications();
+
+    const refreshFromRealtime = () => {
+      loadMedications();
+    };
+
+    socketService.on('medication_added', refreshFromRealtime);
+    socketService.on('medication_updated', refreshFromRealtime);
+    socketService.on('medication_deleted', refreshFromRealtime);
+    socketService.on('medication_logged', refreshFromRealtime);
+
+    return () => {
+      socketService.off('medication_added');
+      socketService.off('medication_updated');
+      socketService.off('medication_deleted');
+      socketService.off('medication_logged');
+    };
+  }, [loadMedications]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -113,7 +129,7 @@ export default function Medications() {
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>💊</Text>
             <Text style={styles.noMedsText}>No medications assigned yet.</Text>
-            <Text style={styles.noMedsSubtext}>Your caretaker will add medications for you.</Text>
+            <Text style={styles.noMedsSubtext}>Your caretaker will add medications for you. This page updates automatically when they do.</Text>
           </View>
         ) : (
           medsForSelectedDate.map((med: any) => {

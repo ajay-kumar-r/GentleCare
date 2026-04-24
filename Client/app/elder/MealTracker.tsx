@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   ScrollView,
@@ -19,7 +19,7 @@ import { Calendar } from "react-native-calendars";
 import CustomSnackbar from "../components/CustomSnackbar";
 import CustomCard from "../components/CustomCard";
 import BackButton from "../components/BackButton";
-import { mealAPI } from "../../services/api";
+import { mealAPI, socketService } from "../../services/api";
 
 interface Meal {
   id: number;
@@ -38,7 +38,6 @@ export default function MealTracker() {
   const { colors } = useTheme();
   
   const [meals, setMeals] = useState<Meal[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -56,87 +55,35 @@ export default function MealTracker() {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
 
-  useEffect(() => {
-    fetchMeals();
-  }, [selectedDate]);
-
-  const fetchMeals = async () => {
+  const fetchMeals = useCallback(async () => {
     try {
       const response = await mealAPI.getMeals(selectedDate);
       const fetchedMeals = response.meals || [];
-      
-      // If no meals, show sample data
-      if (fetchedMeals.length === 0) {
-        setMeals([
-          {
-            id: -1,
-            meal_type: "breakfast",
-            meal_name: "Oatmeal with Berries",
-            calories: 250,
-            protein: 8,
-            carbs: 45,
-            fats: 5,
-            scheduled_time: new Date(selectedDate + "T08:00:00").toISOString(),
-            notes: "Includes blueberries, strawberries, and honey",
-          },
-          {
-            id: -2,
-            meal_type: "lunch",
-            meal_name: "Grilled Chicken Salad",
-            calories: 350,
-            protein: 32,
-            carbs: 20,
-            fats: 12,
-            scheduled_time: new Date(selectedDate + "T12:30:00").toISOString(),
-            notes: "With olive oil dressing",
-          },
-          {
-            id: -3,
-            meal_type: "snack",
-            meal_name: "Greek Yogurt with Nuts",
-            calories: 180,
-            protein: 15,
-            carbs: 18,
-            fats: 8,
-            scheduled_time: new Date(selectedDate + "T15:00:00").toISOString(),
-          },
-          {
-            id: -4,
-            meal_type: "dinner",
-            meal_name: "Baked Salmon with Vegetables",
-            calories: 420,
-            protein: 35,
-            carbs: 25,
-            fats: 18,
-            scheduled_time: new Date(selectedDate + "T19:00:00").toISOString(),
-            notes: "Includes broccoli, carrots, and sweet potato",
-          },
-        ]);
-      } else {
-        setMeals(fetchedMeals);
-      }
+      setMeals(fetchedMeals);
     } catch (error: any) {
       console.error("Error fetching meals:", error);
-      // Show sample data on error
-      setMeals([
-        {
-          id: -1,
-          meal_type: "breakfast",
-          meal_name: "Healthy Breakfast",
-          calories: 300,
-          protein: 10,
-          carbs: 40,
-          fats: 8,
-          scheduled_time: new Date(selectedDate + "T08:00:00").toISOString(),
-          notes: "Sample meal - connect to server for real data",
-        },
-      ]);
-      showSnackbar("Showing sample data");
+      setMeals([]);
+      showSnackbar(error.message || "Failed to load meals");
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [selectedDate]);
+
+  useEffect(() => {
+    fetchMeals();
+
+    const refreshFromRealtime = () => {
+      fetchMeals();
+    };
+
+    socketService.on('meal_added', refreshFromRealtime);
+    socketService.on('meal_consumed', refreshFromRealtime);
+
+    return () => {
+      socketService.off('meal_added');
+      socketService.off('meal_consumed');
+    };
+  }, [fetchMeals]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -401,7 +348,10 @@ export default function MealTracker() {
             </CustomCard>
           ))
         ) : (
-          <Text style={styles.emptyText}>No meals for this day</Text>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>No meals for this day</Text>
+            <Text style={styles.emptySubtext}>Your caretaker can add meals and this screen updates automatically.</Text>
+          </View>
         )}
       </ScrollView>
 
@@ -665,7 +615,19 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 16,
     color: "#999",
+    fontFamily: "Poppins_400Regular",
+  },
+  emptyState: {
     marginTop: 50,
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    padding: 16,
+  },
+  emptySubtext: {
+    textAlign: "center",
+    fontSize: 14,
+    color: "#666",
+    marginTop: 8,
     fontFamily: "Poppins_400Regular",
   },
   fab: {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -19,7 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import CustomSnackbar from "../components/CustomSnackbar";
 import CustomCard from "../components/CustomCard";
 import BackButton from "../components/BackButton";
-import { emergencyContactAPI } from "../../services/api";
+import { emergencyContactAPI, socketService } from "../../services/api";
 
 interface EmergencyContact {
   id: number;
@@ -34,7 +34,6 @@ export default function EmergencyContacts() {
   const { colors } = useTheme();
 
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -50,64 +49,37 @@ export default function EmergencyContacts() {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
 
-  useEffect(() => {
-    fetchContacts();
-  }, []);
-
-  const fetchContacts = async () => {
+  const fetchContacts = useCallback(async () => {
     try {
       const response = await emergencyContactAPI.getAll();
       const fetchedContacts = response.contacts || [];
-      
-      // If no contacts, show sample data
-      if (fetchedContacts.length === 0) {
-        setContacts([
-          {
-            id: -1,
-            name: "Mary Caretaker",
-            relationship: "Primary Caregiver",
-            phone: "+1234567890",
-            email: "mary.caretaker@example.com",
-            is_primary: true,
-          },
-          {
-            id: -2,
-            name: "Robert Elder",
-            relationship: "Son",
-            phone: "+1987654321",
-            email: "robert.elder@example.com",
-            is_primary: false,
-          },
-          {
-            id: -3,
-            name: "Dr. Sarah Wilson",
-            relationship: "Family Doctor",
-            phone: "+1555123456",
-            email: "dr.wilson@cityhospital.com",
-            is_primary: false,
-          },
-        ]);
-      } else {
-        setContacts(fetchedContacts);
-      }
+      setContacts(fetchedContacts);
     } catch (error: any) {
       console.error("Error fetching contacts:", error);
-      // Show sample data on error
-      setContacts([
-        {
-          id: -1,
-          name: "Emergency Contact",
-          relationship: "Family",
-          phone: "+1234567890",
-          is_primary: true,
-        },
-      ]);
-      showSnackbar("Showing sample data");
+      setContacts([]);
+      showSnackbar(error.message || "Failed to load contacts");
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchContacts();
+
+    const refreshFromRealtime = () => {
+      fetchContacts();
+    };
+
+    socketService.on('emergency_contact_added', refreshFromRealtime);
+    socketService.on('emergency_contact_updated', refreshFromRealtime);
+    socketService.on('emergency_contact_deleted', refreshFromRealtime);
+
+    return () => {
+      socketService.off('emergency_contact_added');
+      socketService.off('emergency_contact_updated');
+      socketService.off('emergency_contact_deleted');
+    };
+  }, [fetchContacts]);
 
   const onRefresh = () => {
     setRefreshing(true);

@@ -96,7 +96,6 @@ export const socketService = {
     if (socket) return socket;
     
     socket = io(SOCKET_URL, {
-      transports: ['websocket'],
       reconnection: true,
     });
     

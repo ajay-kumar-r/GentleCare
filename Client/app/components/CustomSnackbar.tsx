@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from "react-native";
+import { Text, StyleSheet, Animated, TouchableOpacity } from "react-native";
 import { useTheme } from "react-native-paper";
 
 interface CustomSnackbarProps {

@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { View, ScrollView, StyleSheet, RefreshControl } from "react-native";
 import { Text, useTheme } from "react-native-paper";
 import HealthCard from "../components/Elder/HealthCard";
 import HealthChart from "../components/Elder/HealthChart";
 import BackButton from "../components/BackButton";
 import CustomSnackbar from "../components/CustomSnackbar";
-import { healthAPI } from "../../services/api";
+import { healthAPI, socketService } from "../../services/api";
 
 interface HealthRecord {
   id: number;
@@ -18,86 +18,39 @@ interface HealthRecord {
 export default function HealthTracking() {
   const { colors } = useTheme();
   const [healthRecords, setHealthRecords] = useState<HealthRecord[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
 
-  useEffect(() => {
-    fetchHealthRecords();
-  }, []);
-
-    const fetchHealthRecords = async () => {
+  const fetchHealthRecords = useCallback(async () => {
     try {
       const response = await healthAPI.getRecords({ days: 7 });
       const fetchedRecords = response.records || [];
-      
-      // Generate comprehensive sample data for the last 7 days
-      const sampleData: HealthRecord[] = [];
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        
-        // Heart Rate data
-        sampleData.push({
-          id: -(i * 4 + 1),
-          type: "heart_rate",
-          value: (70 + Math.floor(Math.random() * 10)).toString(),
-          unit: "bpm",
-          recorded_at: date.toISOString(),
-        });
-        
-        // Blood Pressure data
-        sampleData.push({
-          id: -(i * 4 + 2),
-          type: "blood_pressure",
-          value: `${115 + Math.floor(Math.random() * 10)}/${70 + Math.floor(Math.random() * 10)}`,
-          unit: "mmHg",
-          recorded_at: date.toISOString(),
-        });
-        
-        // Glucose data
-        sampleData.push({
-          id: -(i * 4 + 3),
-          type: "glucose",
-          value: (90 + Math.floor(Math.random() * 15)).toString(),
-          unit: "mg/dL",
-          recorded_at: date.toISOString(),
-        });
-        
-        // Oxygen Saturation data
-        sampleData.push({
-          id: -(i * 4 + 4),
-          type: "oxygen_saturation",
-          value: (96 + Math.floor(Math.random() * 3)).toString(),
-          unit: "%",
-          recorded_at: date.toISOString(),
-        });
-      }
-      
-      // Merge fetched records with sample data, prioritizing fetched records
-      const allRecords = [...fetchedRecords, ...sampleData];
-      setHealthRecords(allRecords);
-      
-      if (fetchedRecords.length === 0) {
-        showSnackbar("Showing sample data - Records will sync from caretaker");
-      }
+      setHealthRecords(fetchedRecords);
     } catch (error: any) {
       console.error("Error fetching health records:", error);
-      // Fallback to sample data on error (just generate a simple set)
-      const simpleSample: HealthRecord[] = [
-        { id: -1, type: "heart_rate", value: "72", unit: "bpm", recorded_at: new Date().toISOString() },
-        { id: -2, type: "blood_pressure", value: "120/80", unit: "mmHg", recorded_at: new Date().toISOString() },
-        { id: -3, type: "glucose", value: "95", unit: "mg/dL", recorded_at: new Date().toISOString() },
-        { id: -4, type: "oxygen_saturation", value: "98", unit: "%", recorded_at: new Date().toISOString() },
-      ];
-      setHealthRecords(simpleSample);
-      showSnackbar("Showing sample data");
+      setHealthRecords([]);
+      showSnackbar(error.message || "Failed to load health records");
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchHealthRecords();
+
+    const refreshFromRealtime = () => {
+      fetchHealthRecords();
+    };
+
+    socketService.on('health_record_added', refreshFromRealtime);
+    socketService.on('health_record_deleted', refreshFromRealtime);
+
+    return () => {
+      socketService.off('health_record_added');
+      socketService.off('health_record_deleted');
+    };
+  }, [fetchHealthRecords]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -140,34 +93,45 @@ export default function HealthTracking() {
         <BackButton />
         <Text style={[styles.title, { color: colors.primary }]}>Health Tracking</Text>
 
-        <HealthCard 
-          title="Heart Rate" 
-          value={getLatestValue("heart_rate")} 
-          unit="bpm" 
-          icon="heart-pulse" 
-          color="#E57373" 
-        />
-        <HealthCard 
-          title="Blood Pressure" 
-          value={getLatestValue("blood_pressure")} 
-          unit="mmHg" 
-          icon="heart" 
-          color="#64B5F6" 
-        />
-        <HealthCard 
-          title="Glucose Level" 
-          value={getLatestValue("glucose")} 
-          unit="mg/dL" 
-          icon="test-tube" 
-          color="#81C784" 
-        />
-        <HealthCard 
-          title="Oxygen Saturation" 
-          value={getLatestValue("oxygen_saturation")} 
-          unit="%" 
-          icon="weather-windy" 
-          color="#FFD54F" 
-        />
+        {healthRecords.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No health records yet</Text>
+            <Text style={styles.emptyBody}>
+              New vitals from your caretaker will appear here in real time.
+            </Text>
+          </View>
+        ) : (
+          <>
+            <HealthCard 
+              title="Heart Rate" 
+              value={getLatestValue("heart_rate")} 
+              unit="bpm" 
+              icon="heart-pulse" 
+              color="#E57373" 
+            />
+            <HealthCard 
+              title="Blood Pressure" 
+              value={getLatestValue("blood_pressure")} 
+              unit="mmHg" 
+              icon="heart" 
+              color="#64B5F6" 
+            />
+            <HealthCard 
+              title="Glucose Level" 
+              value={getLatestValue("glucose")} 
+              unit="mg/dL" 
+              icon="test-tube" 
+              color="#81C784" 
+            />
+            <HealthCard 
+              title="Oxygen Saturation" 
+              value={getLatestValue("oxygen_saturation")} 
+              unit="%" 
+              icon="weather-windy" 
+              color="#FFD54F" 
+            />
+          </>
+        )}
 
         {heartRateData.data.length > 0 && (
           <HealthChart
@@ -217,5 +181,23 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginHorizontal: 20,
     textAlign: "center",
+  },
+  emptyState: {
+    backgroundColor: "#FFF",
+    marginHorizontal: 20,
+    marginTop: 10,
+    borderRadius: 12,
+    padding: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: "Poppins_700Bold",
+    color: "#333",
+    marginBottom: 6,
+  },
+  emptyBody: {
+    fontSize: 14,
+    color: "#666",
+    fontFamily: "Poppins_400Regular",
   },
 });
