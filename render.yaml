@@ -19,8 +19,9 @@ services:
       - key: GOOGLE_APPLICATION_CREDENTIALS
         value: /tmp/gcp-credentials.json
 
-  - type: static_site
+  - type: web
     name: gentlecare-web
+    runtime: static
     rootDir: Client
     buildCommand: npm ci && npx expo export --platform web
     staticPublishPath: dist
