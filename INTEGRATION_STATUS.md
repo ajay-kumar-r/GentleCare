@@ -1,3 +1,42 @@
+# GentleCare - Production Handoff
+
+## Release Parts
+
+### Part 1: Backend stability and secret cleanup
+- Moved sensitive configuration to environment variables in the production backend path.
+- Removed the hardcoded Gemini key from the legacy backend entrypoint.
+- Added capability and health endpoints so deployment can report AI readiness instead of failing silently.
+
+### Part 2: Real-time multi-user sync
+- Added elder/caretaker resolution on the server so caretaker actions resolve to the correct elder profile.
+- Broadcast care-team updates for medications, health records, meals, appointments, emergency contacts, and prescriptions.
+- Added the missing meal creation endpoint used by the client.
+
+### Part 3: Client hydration and live updates
+- Reconnected the socket automatically on app launch for persisted sessions.
+- Added realtime refresh listeners to elder and caretaker screens.
+- Replaced empty sample-data fallbacks with truthful empty states and clearer guidance.
+
+### Part 4: Deployment readiness
+- Added Render blueprint config for the API and Expo web build.
+- Switched the API runtime to a compatible Gunicorn threaded startup.
+- Verified Expo web export, backend syntax, lint, and local startup on the production command.
+
+## Current Status
+
+The app is now code-complete for deployment, but the live production health still depends on Render environment variables being set correctly.
+
+Required external values on Render:
+- `SECRET_KEY`
+- `JWT_SECRET_KEY`
+- `GEMINI_API_KEY`
+- `GOOGLE_CREDENTIALS_JSON`
+- `EXPO_PUBLIC_API_BASE_URL` for the web service
+
+When those values are present, the backend reports AI readiness through `/health` and `/capabilities`, and the web export plus API startup path are already validated locally.
+
+---
+
 # GentleCare - Backend Integration Complete! 🎉
 
 ## What's Been Done
