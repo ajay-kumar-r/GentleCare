@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 import os
 import io
 import wave
+import json
 
 # Google Cloud imports
 from google.cloud import speech, texttospeech
@@ -35,12 +36,24 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 CORS(app)
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 db.init_app(app)
 
 # Google Cloud credentials
 google_creds_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-if not google_creds_path:
+google_creds_json = os.getenv('GOOGLE_CREDENTIALS_JSON', '').strip()
+
+if google_creds_json:
+    try:
+        parsed_creds = json.loads(google_creds_json)
+        creds_target = os.path.join('/tmp', 'gcp-credentials.json')
+        with open(creds_target, 'w', encoding='utf-8') as creds_file:
+            json.dump(parsed_creds, creds_file)
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = creds_target
+    except Exception as e:
+        print(f"Failed to parse GOOGLE_CREDENTIALS_JSON: {e}")
+
+if not os.getenv('GOOGLE_APPLICATION_CREDENTIALS'):
     default_creds = os.path.join(BASE_DIR, 'gentecare-c5d5a11b6915.json')
     if os.path.exists(default_creds):
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = default_creds
@@ -53,9 +66,49 @@ if API_KEY:
     model = genai.GenerativeModel("gemini-1.5-pro-latest")
 conversation_history = []
 
+def resolve_elder_id_for_user(user, explicit_elder_id=None):
+    """Resolve target elder profile id for current user context."""
+    if user.user_type == 'elder':
+        elder_profile = ElderProfile.query.filter_by(user_id=user.id).first()
+        return elder_profile.id if elder_profile else None
+
+    if explicit_elder_id:
+        return explicit_elder_id
+
+    elders = ElderProfile.query.filter_by(caretaker_id=user.id).all()
+    return elders[0].id if elders else None
+
+def emit_to_care_team(elder_id, event_name, payload):
+    """Emit realtime events to both elder and caretaker user rooms."""
+    elder_profile = ElderProfile.query.get(elder_id)
+    if not elder_profile:
+        return
+
+    socketio.emit(event_name, payload, room=f'user_{elder_profile.user_id}')
+    if elder_profile.caretaker_id:
+        socketio.emit(event_name, payload, room=f'user_{elder_profile.caretaker_id}')
+
+def get_ai_capabilities():
+    creds_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
+    creds_file_exists = bool(creds_path) and os.path.exists(creds_path)
+    speech_ready = bool(creds_path and creds_file_exists)
+    return {
+        "chatbot": model is not None,
+        "speech_to_text": speech_ready,
+        "text_to_speech": speech_ready,
+    }
+
+@app.route('/capabilities', methods=['GET'])
+def capabilities():
+    ai = get_ai_capabilities()
+    ready = ai["chatbot"] and ai["speech_to_text"] and ai["text_to_speech"]
+    return jsonify({"ai": ai, "ready": ready}), 200
+
 @app.route('/health', methods=['GET'])
 def health_check():
-    return jsonify({"status": "ok"}), 200
+    ai = get_ai_capabilities()
+    ready = ai["chatbot"] and ai["speech_to_text"] and ai["text_to_speech"]
+    return jsonify({"status": "ok", "ready": ready, "ai": ai}), 200
 
 # JWT error handlers
 @jwt.invalid_token_loader
@@ -280,11 +333,9 @@ def add_medication():
         data = request.json
         user = User.query.get(user_id)
         
-        if user.user_type == 'elder':
-            elder_profile = ElderProfile.query.filter_by(user_id=user_id).first()
-            elder_id = elder_profile.id
-        else:
-            elder_id = data.get('elder_id')
+        elder_id = resolve_elder_id_for_user(user, data.get('elder_id'))
+        if not elder_id:
+            return jsonify({"error": "No elder profile found"}), 404
         
         medication = Medication(
             elder_id=elder_id,
@@ -299,14 +350,11 @@ def add_medication():
         db.session.add(medication)
         db.session.commit()
         
-        # Notify both elder and caretaker
-        elder_profile = ElderProfile.query.get(elder_id)
-        if elder_profile.caretaker_id:
-            socketio.emit('medication_added', {
-                'medication_id': medication.id,
-                'elder_id': elder_id,
-                'name': medication.name
-            }, room=f'user_{elder_profile.caretaker_id}')
+        emit_to_care_team(elder_id, 'medication_added', {
+            'medication_id': medication.id,
+            'elder_id': elder_id,
+            'name': medication.name
+        })
         
         return jsonify({
             "message": "Medication added successfully",
@@ -335,7 +383,7 @@ def log_medication(med_id):
         db.session.add(log)
         db.session.commit()
         
-        # Notify caretaker
+        # Notify care team and create caretaker notification
         elder_profile = ElderProfile.query.get(medication.elder_id)
         if elder_profile.caretaker_id:
             notification = Notification(
@@ -347,15 +395,23 @@ def log_medication(med_id):
             )
             db.session.add(notification)
             db.session.commit()
-            
-            socketio.emit('medication_logged', {
-                'medication_id': med_id,
-                'elder_id': medication.elder_id,
-                'elder_name': elder_profile.user.full_name,
-                'medication_name': medication.name,
-                'status': log.status,
-                'time': log.taken_at.isoformat()
+
+            socketio.emit('notification_created', {
+                'recipient_user_id': elder_profile.caretaker_id,
+                'title': notification.title,
+                'message': notification.message,
+                'type': notification.notification_type,
+                'created_at': notification.created_at.isoformat(),
             }, room=f'user_{elder_profile.caretaker_id}')
+
+        emit_to_care_team(medication.elder_id, 'medication_logged', {
+            'medication_id': med_id,
+            'elder_id': medication.elder_id,
+            'elder_name': elder_profile.user.full_name,
+            'medication_name': medication.name,
+            'status': log.status,
+            'time': log.taken_at.isoformat()
+        })
         
         return jsonify({
             "message": "Medication logged successfully",
@@ -391,6 +447,16 @@ def update_medication(med_id):
             medication.is_active = data['is_active']
         
         db.session.commit()
+
+        emit_to_care_team(medication.elder_id, 'medication_updated', {
+            'medication_id': medication.id,
+            'elder_id': medication.elder_id,
+            'name': medication.name,
+            'dosage': medication.dosage,
+            'frequency': medication.frequency,
+            'time': medication.time,
+            'is_active': medication.is_active,
+        })
         
         return jsonify({
             "message": "Medication updated successfully",
@@ -420,6 +486,11 @@ def delete_medication(med_id):
         medication.is_active = False
         
         db.session.commit()
+
+        emit_to_care_team(medication.elder_id, 'medication_deleted', {
+            'medication_id': medication.id,
+            'elder_id': medication.elder_id,
+        })
         
         return jsonify({
             "message": "Medication deleted successfully"
@@ -447,6 +518,11 @@ def get_health_records():
         if user.user_type == 'elder':
             elder_profile = ElderProfile.query.filter_by(user_id=user_id).first()
             elder_id = elder_profile.id
+        elif not elder_id:
+            elder_id = resolve_elder_id_for_user(user)
+
+        if not elder_id:
+            return jsonify({"records": []}), 200
         
         query = HealthRecord.query.filter_by(elder_id=elder_id)
         if record_type:
@@ -478,11 +554,9 @@ def add_health_record():
         data = request.json
         user = User.query.get(user_id)
         
-        if user.user_type == 'elder':
-            elder_profile = ElderProfile.query.filter_by(user_id=user_id).first()
-            elder_id = elder_profile.id
-        else:
-            elder_id = data.get('elder_id')
+        elder_id = resolve_elder_id_for_user(user, data.get('elder_id'))
+        if not elder_id:
+            return jsonify({"error": "No elder profile found"}), 404
         
         record = HealthRecord(
             elder_id=elder_id,
@@ -494,16 +568,14 @@ def add_health_record():
         db.session.add(record)
         db.session.commit()
         
-        # Notify caretaker
         elder_profile = ElderProfile.query.get(elder_id)
-        if elder_profile.caretaker_id:
-            socketio.emit('health_record_added', {
-                'elder_id': elder_id,
-                'elder_name': elder_profile.user.full_name,
-                'type': record.record_type,
-                'value': record.value,
-                'unit': record.unit
-            }, room=f'user_{elder_profile.caretaker_id}')
+        emit_to_care_team(elder_id, 'health_record_added', {
+            'elder_id': elder_id,
+            'elder_name': elder_profile.user.full_name,
+            'type': record.record_type,
+            'value': record.value,
+            'unit': record.unit
+        })
         
         return jsonify({
             "message": "Health record added successfully",
@@ -525,8 +597,14 @@ def delete_health_record(record_id):
         if not record:
             return jsonify({"error": "Health record not found"}), 404
         
+        elder_id = record.elder_id
         db.session.delete(record)
         db.session.commit()
+
+        emit_to_care_team(elder_id, 'health_record_deleted', {
+            'record_id': record_id,
+            'elder_id': elder_id,
+        })
         
         return jsonify({"message": "Health record deleted successfully"}), 200
         
@@ -551,7 +629,12 @@ def get_meals():
             elder_profile = ElderProfile.query.filter_by(user_id=user_id).first()
             elder_id = elder_profile.id
         else:
-            elder_id = request.args.get('elder_id')
+            elder_id = request.args.get('elder_id', type=int)
+            if not elder_id:
+                elder_id = resolve_elder_id_for_user(user)
+
+        if not elder_id:
+            return jsonify({"meals": []}), 200
         
         query = Meal.query.filter_by(elder_id=elder_id)
         if date_str:
@@ -589,19 +672,71 @@ def consume_meal(meal_id):
         meal.consumed_at = datetime.utcnow()
         db.session.commit()
         
-        # Notify caretaker
+        # Notify care team
         elder_profile = ElderProfile.query.get(meal.elder_id)
-        if elder_profile.caretaker_id:
-            socketio.emit('meal_consumed', {
-                'meal_id': meal_id,
-                'elder_id': meal.elder_id,
-                'elder_name': elder_profile.user.full_name,
-                'meal_type': meal.meal_type,
-                'meal_name': meal.meal_name
-            }, room=f'user_{elder_profile.caretaker_id}')
+        emit_to_care_team(meal.elder_id, 'meal_consumed', {
+            'meal_id': meal_id,
+            'elder_id': meal.elder_id,
+            'elder_name': elder_profile.user.full_name,
+            'meal_type': meal.meal_type,
+            'meal_name': meal.meal_name
+        })
         
         return jsonify({"message": "Meal marked as consumed"}), 200
         
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/meals', methods=['POST'])
+@jwt_required()
+def add_meal():
+    """Add meal plan/entry"""
+    try:
+        user_id = int(get_jwt_identity())
+        data = request.json
+        user = User.query.get(user_id)
+
+        elder_id = resolve_elder_id_for_user(user, data.get('elder_id'))
+        if not elder_id:
+            return jsonify({"error": "No elder profile found"}), 404
+
+        scheduled_time = None
+        if data.get('scheduled_time'):
+            try:
+                scheduled_time = datetime.fromisoformat(data.get('scheduled_time'))
+            except ValueError:
+                scheduled_time = datetime.utcnow()
+
+        meal = Meal(
+            elder_id=elder_id,
+            meal_type=data.get('meal_type'),
+            meal_name=data.get('meal_name'),
+            calories=data.get('calories'),
+            protein=data.get('protein'),
+            carbs=data.get('carbs'),
+            fats=data.get('fats'),
+            scheduled_time=scheduled_time,
+            notes=data.get('notes')
+        )
+        db.session.add(meal)
+        db.session.commit()
+
+        elder_profile = ElderProfile.query.get(elder_id)
+        emit_to_care_team(elder_id, 'meal_added', {
+            'meal_id': meal.id,
+            'elder_id': elder_id,
+            'elder_name': elder_profile.user.full_name,
+            'meal_type': meal.meal_type,
+            'meal_name': meal.meal_name,
+            'scheduled_time': meal.scheduled_time.isoformat() if meal.scheduled_time else None,
+        })
+
+        return jsonify({
+            "message": "Meal added successfully",
+            "meal_id": meal.id,
+        }), 201
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
@@ -652,11 +787,9 @@ def add_appointment():
         data = request.json
         user = User.query.get(user_id)
         
-        if user.user_type == 'elder':
-            elder_profile = ElderProfile.query.filter_by(user_id=user_id).first()
-            elder_id = elder_profile.id
-        else:
-            elder_id = data.get('elder_id')
+        elder_id = resolve_elder_id_for_user(user, data.get('elder_id'))
+        if not elder_id:
+            return jsonify({"error": "No elder profile found"}), 404
         
         appointment = Appointment(
             elder_id=elder_id,
@@ -670,15 +803,12 @@ def add_appointment():
         db.session.add(appointment)
         db.session.commit()
         
-        # Notify both elder and caretaker
-        elder_profile = ElderProfile.query.get(elder_id)
-        if elder_profile.caretaker_id:
-            socketio.emit('appointment_added', {
-                'appointment_id': appointment.id,
-                'elder_id': elder_id,
-                'title': appointment.title,
-                'date': appointment.appointment_date.isoformat()
-            }, room=f'user_{elder_profile.caretaker_id}')
+        emit_to_care_team(elder_id, 'appointment_added', {
+            'appointment_id': appointment.id,
+            'elder_id': elder_id,
+            'title': appointment.title,
+            'date': appointment.appointment_date.isoformat()
+        })
         
         return jsonify({
             "message": "Appointment added successfully",
@@ -717,6 +847,14 @@ def update_appointment(appointment_id):
             appointment.status = data['status']
         
         db.session.commit()
+
+        emit_to_care_team(appointment.elder_id, 'appointment_updated', {
+            'appointment_id': appointment.id,
+            'elder_id': appointment.elder_id,
+            'title': appointment.title,
+            'status': appointment.status,
+            'appointment_date': appointment.appointment_date.isoformat(),
+        })
         
         return jsonify({
             "message": "Appointment updated successfully",
@@ -747,8 +885,14 @@ def delete_appointment(appointment_id):
         if not appointment:
             return jsonify({"error": "Appointment not found"}), 404
         
+        elder_id = appointment.elder_id
         db.session.delete(appointment)
         db.session.commit()
+
+        emit_to_care_team(elder_id, 'appointment_deleted', {
+            'appointment_id': appointment_id,
+            'elder_id': elder_id,
+        })
         
         return jsonify({"message": "Appointment deleted successfully"}), 200
         
@@ -877,7 +1021,12 @@ def get_emergency_contacts():
             elder_profile = ElderProfile.query.filter_by(user_id=user_id).first()
             elder_id = elder_profile.id
         else:
-            elder_id = request.args.get('elder_id')
+            elder_id = request.args.get('elder_id', type=int)
+            if not elder_id:
+                elder_id = resolve_elder_id_for_user(user)
+
+        if not elder_id:
+            return jsonify({"contacts": []}), 200
         
         contacts = EmergencyContact.query.filter_by(elder_id=elder_id).all()
         
@@ -904,11 +1053,9 @@ def add_emergency_contact():
         data = request.json
         user = User.query.get(user_id)
         
-        if user.user_type == 'elder':
-            elder_profile = ElderProfile.query.filter_by(user_id=user_id).first()
-            elder_id = elder_profile.id
-        else:
-            elder_id = data.get('elder_id')
+        elder_id = resolve_elder_id_for_user(user, data.get('elder_id'))
+        if not elder_id:
+            return jsonify({"error": "No elder profile found"}), 404
         
         contact = EmergencyContact(
             elder_id=elder_id,
@@ -920,6 +1067,13 @@ def add_emergency_contact():
         )
         db.session.add(contact)
         db.session.commit()
+
+        emit_to_care_team(elder_id, 'emergency_contact_added', {
+            'contact_id': contact.id,
+            'elder_id': elder_id,
+            'name': contact.name,
+            'relationship': contact.relationship,
+        })
         
         return jsonify({
             "message": "Emergency contact added successfully",
@@ -954,6 +1108,13 @@ def update_emergency_contact(contact_id):
             contact.is_primary = data['is_primary']
         
         db.session.commit()
+
+        emit_to_care_team(contact.elder_id, 'emergency_contact_updated', {
+            'contact_id': contact.id,
+            'elder_id': contact.elder_id,
+            'name': contact.name,
+            'relationship': contact.relationship,
+        })
         
         return jsonify({
             "message": "Emergency contact updated successfully",
@@ -982,8 +1143,14 @@ def delete_emergency_contact(contact_id):
         if not contact:
             return jsonify({"error": "Emergency contact not found"}), 404
         
+        elder_id = contact.elder_id
         db.session.delete(contact)
         db.session.commit()
+
+        emit_to_care_team(elder_id, 'emergency_contact_deleted', {
+            'contact_id': contact_id,
+            'elder_id': elder_id,
+        })
         
         return jsonify({"message": "Emergency contact deleted successfully"}), 200
         
@@ -1011,9 +1178,9 @@ def transcribe():
         client = speech.SpeechClient()
         audio = speech.RecognitionAudio(content=audio_bytes)
         config = speech.RecognitionConfig(
-            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-            sample_rate_hertz=16000,
             language_code="en-US",
+            enable_automatic_punctuation=True,
+            model="latest_short",
         )
         
         response = client.recognize(config=config, audio=audio)
@@ -1163,6 +1330,13 @@ def add_prescription():
         
         db.session.add(prescription)
         db.session.commit()
+
+        emit_to_care_team(elder_id, 'prescription_added', {
+            'prescription_id': prescription.id,
+            'elder_id': elder_id,
+            'doctor_name': prescription.doctor_name,
+            'date': prescription.date.isoformat(),
+        })
         
         return jsonify({
             "message": "Prescription added successfully",
@@ -1210,6 +1384,13 @@ def update_prescription(prescription_id):
             prescription.image_path = data['image_path']
         
         db.session.commit()
+
+        emit_to_care_team(prescription.elder_id, 'prescription_updated', {
+            'prescription_id': prescription.id,
+            'elder_id': prescription.elder_id,
+            'doctor_name': prescription.doctor_name,
+            'date': prescription.date.isoformat(),
+        })
         
         return jsonify({
             "message": "Prescription updated successfully",
@@ -1239,8 +1420,14 @@ def delete_prescription(prescription_id):
         if not prescription:
             return jsonify({"error": "Prescription not found"}), 404
         
+        elder_id = prescription.elder_id
         db.session.delete(prescription)
         db.session.commit()
+
+        emit_to_care_team(elder_id, 'prescription_deleted', {
+            'prescription_id': prescription_id,
+            'elder_id': elder_id,
+        })
         
         return jsonify({"message": "Prescription deleted successfully"}), 200
     except Exception as e:

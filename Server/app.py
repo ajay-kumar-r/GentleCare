@@ -20,17 +20,26 @@ import wave
 app = Flask(__name__)
 CORS(app)
 
-# Set Google Cloud credentials
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "gentecare-c5d5a11b6915.json"
+# Set Google Cloud credentials if provided by environment, otherwise keep local fallback
+google_creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
+if not google_creds:
+    default_creds = "gentecare-c5d5a11b6915.json"
+    if os.path.exists(default_creds):
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = default_creds
 
 # Gemini
-API_KEY = "AIzaSyB2PhOsz-fWJIN2VvzTGwQsaG-XsyueRUw"
-genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel("gemini-1.5-pro-latest")
+API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+model = None
+if API_KEY:
+    genai.configure(api_key=API_KEY)
+    model = genai.GenerativeModel("gemini-1.5-pro-latest")
 conversation_history = []
 
 @app.route("/chat", methods=["POST"])
 def chat():
+    if model is None:
+        return jsonify({"error": "Chatbot is not configured on the server"}), 503
+
     user_input = request.get_json().get("message", "")
     conversation_history.append(f"User: {user_input}")
     prompt = (

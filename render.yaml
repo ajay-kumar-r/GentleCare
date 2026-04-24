@@ -4,10 +4,8 @@ services:
     env: python
     rootDir: Server
     buildCommand: pip install -r requirements.txt
-    startCommand: python app_new.py
+    startCommand: gunicorn -k gthread -w 1 --threads 8 app_new:app --bind 0.0.0.0:$PORT
     envVars:
-      - key: PORT
-        value: 10000
       - key: FLASK_DEBUG
         value: false
       - key: SECRET_KEY
@@ -16,5 +14,16 @@ services:
         generateValue: true
       - key: GEMINI_API_KEY
         sync: false
+      - key: GOOGLE_CREDENTIALS_JSON
+        sync: false
       - key: GOOGLE_APPLICATION_CREDENTIALS
-        value: /opt/render/project/src/Server/gcp-credentials.json
+        value: /tmp/gcp-credentials.json
+
+  - type: static
+    name: gentlecare-web
+    rootDir: Client
+    buildCommand: npm ci && npx expo export --platform web
+    staticPublishPath: dist
+    envVars:
+      - key: EXPO_PUBLIC_API_BASE_URL
+        sync: false
