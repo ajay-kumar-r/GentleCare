@@ -8,7 +8,12 @@ import io from 'socket.io-client';
 
 // Use env-configured backend URL, with simulator-friendly defaults for local dev.
 const defaultLocalApi = Platform.OS === 'android' ? 'http://10.0.2.2:5001' : 'http://127.0.0.1:5001';
-export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || defaultLocalApi).replace(/\/$/, '');
+const defaultProductionApi = 'https://gentlecare-server.onrender.com';
+
+export const API_BASE_URL = (
+  process.env.EXPO_PUBLIC_API_BASE_URL ||
+  (process.env.NODE_ENV === 'production' ? defaultProductionApi : defaultLocalApi)
+).replace(/\/$/, '');
 const SOCKET_URL = API_BASE_URL;
 
 // Socket instance
