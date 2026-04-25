@@ -43,14 +43,13 @@ bcrypt = Bcrypt(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 db.init_app(app)
 
-# Initialize database tables on app startup (for Gunicorn/Render)
-@app.before_request
-def init_db():
-    """Create database tables if they don't exist. Runs once per startup."""
-    if not hasattr(app, '_db_initialized'):
-        with app.app_context():
-            db.create_all()
-        app._db_initialized = True
+# Create database tables immediately on app initialization
+with app.app_context():
+    try:
+        db.create_all()
+        print("✓ Database tables initialized")
+    except Exception as e:
+        print(f"Warning: Could not initialize database tables: {e}")
 
 # Google Cloud credentials
 google_creds_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
