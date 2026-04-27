@@ -10,9 +10,19 @@ import io from 'socket.io-client';
 const defaultLocalApi = Platform.OS === 'android' ? 'http://10.0.2.2:5001' : 'http://127.0.0.1:5001';
 const defaultProductionApi = 'https://gentlecare-server.onrender.com';
 
+// For static site deployments, check if we're on web and not on localhost
+const isProduction = () => {
+  if (typeof window !== 'undefined' && Platform.OS === 'web') {
+    const hostname = window.location.hostname;
+    // Use production URL if not on localhost
+    return hostname !== 'localhost' && hostname !== '127.0.0.1';
+  }
+  return process.env.NODE_ENV === 'production';
+};
+
 export const API_BASE_URL = (
   process.env.EXPO_PUBLIC_API_BASE_URL ||
-  (process.env.NODE_ENV === 'production' ? defaultProductionApi : defaultLocalApi)
+  (isProduction() ? defaultProductionApi : defaultLocalApi)
 ).replace(/\/$/, '');
 const SOCKET_URL = API_BASE_URL;
 

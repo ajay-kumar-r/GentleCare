@@ -37,10 +37,18 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-CORS(app)
+# Configure CORS for Render deployment
+cors_origins = [
+    "http://localhost:3000",
+    "http://localhost:8081",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8081",
+    "https://gentlecare-client.onrender.com"
+]
+CORS(app, origins=cors_origins, supports_credentials=True)
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+socketio = SocketIO(app, cors_allowed_origins=cors_origins, async_mode="threading")
 db.init_app(app)
 
 # Create database tables immediately on app initialization
@@ -121,6 +129,24 @@ def health_check():
     ai = get_ai_capabilities()
     ready = ai["chatbot"] and ai["speech_to_text"] and ai["text_to_speech"]
     return jsonify({"status": "ok", "ready": ready, "ai": ai}), 200
+
+@app.route('/', methods=['GET'])
+def index():
+    """Root endpoint for health checks and API documentation"""
+    return jsonify({
+        "message": "GentleCare API Server",
+        "version": "1.0.0",
+        "status": "running",
+        "endpoints": {
+            "health": "/health",
+            "capabilities": "/capabilities",
+            "auth": "/auth/login, /auth/signup",
+            "medications": "/medications",
+            "health_records": "/health-records",
+            "appointments": "/appointments",
+            "meals": "/meals"
+        }
+    }), 200
 
 # JWT error handlers
 @jwt.invalid_token_loader
