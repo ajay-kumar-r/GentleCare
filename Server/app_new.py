@@ -76,14 +76,14 @@ with app.app_context():
         if not IS_PRODUCTION:
             try:
                 if not User.query.filter_by(email='elder@test.com').first():
-                    elder = User(email='elder@test.com', password_hash=bcrypt.generate_password_hash('password123').decode('utf-8'), full_name='John Elder', phone='+1234567890', user_type='elder')
+                    elder = User(email='elder@test.com', password_hash=bcrypt.generate_password_hash('password').decode('utf-8'), full_name='John Elder', phone='+1234567890', user_type='elder')
                     db.session.add(elder)
                     db.session.flush()
                     db.session.add(ElderProfile(user_id=elder.id, emergency_contact='+1234567890'))
                     db.session.commit()
                     logger.info('Created test elder: elder@test.com')
                 if not User.query.filter_by(email='caretaker@test.com').first():
-                    ct = User(email='caretaker@test.com', password_hash=bcrypt.generate_password_hash('password123').decode('utf-8'), full_name='Mary Caretaker', phone='+0987654321', user_type='caretaker')
+                    ct = User(email='caretaker@test.com', password_hash=bcrypt.generate_password_hash('password').decode('utf-8'), full_name='Mary Caretaker', phone='+0987654321', user_type='caretaker')
                     db.session.add(ct)
                     db.session.flush()
                     db.session.add(CaretakerProfile(user_id=ct.id))
