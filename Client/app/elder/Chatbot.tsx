@@ -5,7 +5,7 @@ import { useAudioRecorder, AudioModule } from "expo-audio";
 import { Audio } from "expo-av";
 import * as FileSystem from "expo-file-system/legacy";
 import BackButton from "../components/BackButton";
-import { API_BASE_URL } from "../../services/api";
+import { API_BASE_URL, storage } from "../../services/api";
 
 const API_URL = API_BASE_URL;
 
@@ -125,6 +125,8 @@ export default function ChatbotVoice() {
         throw new Error("No recording was captured. Please try again.");
       }
 
+      const token = await storage.getToken();
+
       const formData = new FormData();
       formData.append("file", {
         uri: recordingUri,
@@ -134,6 +136,9 @@ export default function ChatbotVoice() {
 
       const transcribeRes = await fetch(`${API_URL}/transcribe`, {
         method: "POST",
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: formData,
       });
       const transcribeData = await transcribeRes.json();
@@ -148,7 +153,10 @@ export default function ChatbotVoice() {
 
       const chatRes = await fetch(`${API_URL}/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ message: userMessage }),
       });
       const chatData = await chatRes.json();
@@ -164,7 +172,10 @@ export default function ChatbotVoice() {
 
       const speakRes = await fetch(`${API_URL}/speak`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ text: botReply }),
       });
       if (!speakRes.ok) {
@@ -216,11 +227,11 @@ export default function ChatbotVoice() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <BackButton />
       <View style={styles.mainContent}>
         {!isRecording ? (
-          <TouchableOpacity style={styles.micContainer} onPress={startRecording} disabled={loading || !isAiReady}>
+          <TouchableOpacity style={[styles.micContainer, { backgroundColor: colors.primary + "20" }]} onPress={startRecording} disabled={loading || !isAiReady}>
             <IconButton icon="microphone" size={80} iconColor={colors.primary} style={styles.micIcon} />
           </TouchableOpacity>
         ) : (
@@ -228,7 +239,7 @@ export default function ChatbotVoice() {
             {waveforms.map((waveform, index) => (
               <Animated.View
                 key={index}
-                style={[styles.waveform, { transform: [{ scaleY: waveform }] }]}
+                style={[styles.waveform, { backgroundColor: colors.primary, transform: [{ scaleY: waveform }] }]}
               />
             ))}
           </View>
@@ -243,8 +254,8 @@ export default function ChatbotVoice() {
 
       {loading && (
         <View style={{ marginTop: 20 }}>
-          <ActivityIndicator size="small" color="#555" />
-          <Text style={{ marginTop: 5 }}>Processing...</Text>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={{ marginTop: 5, color: colors.onSurface || "#555", fontFamily: "Poppins_400Regular" }}>Processing...</Text>
         </View>
       )}
 
@@ -255,8 +266,8 @@ export default function ChatbotVoice() {
       )}
 
       {chatbotResponse !== "" && (
-        <View style={styles.responseContainer}>
-          <Text style={styles.chatbotResponseText}>{chatbotResponse}</Text>
+        <View style={[styles.responseContainer, { backgroundColor: colors.surfaceVariant || "#f0f0f0" }]}>
+          <Text style={[styles.chatbotResponseText, { color: colors.onSurfaceVariant || "#333" }]}>{chatbotResponse}</Text>
         </View>
       )}
     </View>
@@ -266,7 +277,6 @@ export default function ChatbotVoice() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9F9F9",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -282,8 +292,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: "#007AFF",
-    elevation: 5,
+    elevation: 0,
   },
   micIcon: {
     backgroundColor: "transparent",
@@ -297,7 +306,6 @@ const styles = StyleSheet.create({
   },
   waveform: {
     height: 5,
-    backgroundColor: "#007AFF",
     borderRadius: 2,
     width: 30,
     marginHorizontal: 3,
@@ -330,13 +338,12 @@ const styles = StyleSheet.create({
   responseContainer: {
     position: "absolute",
     bottom: 150,
-    backgroundColor: "#f0f0f0",
     padding: 20,
     borderRadius: 10,
     width: "80%",
   },
   chatbotResponseText: {
     fontSize: 16,
-    color: "#333",
+    fontFamily: "Poppins_400Regular",
   },
 });

@@ -9,10 +9,8 @@ import {
 } from "react-native";
 import {
   Text,
-  TextInput,
   Button,
   useTheme,
-  FAB,
 } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
 import { Calendar } from "react-native-calendars";
@@ -101,32 +99,6 @@ export default function MealTracker() {
     setNotes("");
   };
 
-  const handleAdd = async () => {
-    if (!mealName.trim()) {
-      Alert.alert("Missing Field", "Please enter meal name");
-      return;
-    }
-
-    try {
-      await mealAPI.addMeal({
-        meal_type: mealType,
-        meal_name: mealName,
-        calories: calories ? parseInt(calories) : undefined,
-        protein: protein ? parseInt(protein) : undefined,
-        carbs: carbs ? parseInt(carbs) : undefined,
-        fats: fats ? parseInt(fats) : undefined,
-        scheduled_time: scheduledTime || undefined,
-        notes: notes || undefined,
-      });
-      showSnackbar("Meal added successfully");
-      setModalVisible(false);
-      resetForm();
-      fetchMeals();
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to add meal");
-    }
-  };
-
   const handleConsume = async (meal: Meal) => {
     if (meal.consumed_at) {
       showSnackbar("Meal already consumed");
@@ -183,7 +155,7 @@ export default function MealTracker() {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <BackButton />
       <Text style={[styles.title, { color: colors.primary }]}>Meal Tracker</Text>
 
@@ -208,29 +180,29 @@ export default function MealTracker() {
         {meals.length > 0 && (
           <CustomCard style={styles.summaryCard}>
             <View>
-              <Text style={styles.summaryTitle}>Daily Summary</Text>
+              <Text style={[styles.summaryTitle, { color: colors.onSurface || "#1A1D21" }]}>Daily Summary</Text>
               <View style={styles.summaryGrid}>
                 <View style={styles.summaryItem}>
-                  <Text style={styles.summaryValue}>{dailyTotals.calories}</Text>
-                  <Text style={styles.summaryLabel}>Calories</Text>
+                  <Text style={[styles.summaryValue, { color: colors.error || "#f44336" }]}>{dailyTotals.calories}</Text>
+                  <Text style={[styles.summaryLabel, { color: colors.onSurfaceVariant || "#666" }]}>Calories</Text>
                 </View>
                 <View style={styles.summaryItem}>
                   <Text style={[styles.summaryValue, { color: "#4CAF50" }]}>
                     {dailyTotals.protein}g
                   </Text>
-                  <Text style={styles.summaryLabel}>Protein</Text>
+                  <Text style={[styles.summaryLabel, { color: colors.onSurfaceVariant || "#666" }]}>Protein</Text>
                 </View>
                 <View style={styles.summaryItem}>
                   <Text style={[styles.summaryValue, { color: "#2196F3" }]}>
                     {dailyTotals.carbs}g
                   </Text>
-                  <Text style={styles.summaryLabel}>Carbs</Text>
+                  <Text style={[styles.summaryLabel, { color: colors.onSurfaceVariant || "#666" }]}>Carbs</Text>
                 </View>
                 <View style={styles.summaryItem}>
                   <Text style={[styles.summaryValue, { color: "#FF9800" }]}>
                     {dailyTotals.fats}g
                   </Text>
-                  <Text style={styles.summaryLabel}>Fats</Text>
+                  <Text style={[styles.summaryLabel, { color: colors.onSurfaceVariant || "#666" }]}>Fats</Text>
                 </View>
               </View>
             </View>
@@ -257,7 +229,7 @@ export default function MealTracker() {
                       />
                     </View>
                     <View style={styles.mealInfo}>
-                      <Text style={styles.mealName}>{meal.meal_name}</Text>
+                      <Text style={[styles.mealName, { color: colors.onSurface || "#1A1D21" }]}>{meal.meal_name}</Text>
                       <View
                         style={[
                           styles.mealTypeChip,
@@ -285,8 +257,8 @@ export default function MealTracker() {
                   <View style={styles.nutritionRow}>
                     {meal.calories && (
                       <View style={styles.nutritionItem}>
-                        <Text style={styles.nutritionValue}>{meal.calories}</Text>
-                        <Text style={styles.nutritionLabel}>cal</Text>
+                        <Text style={[styles.nutritionValue, { color: colors.onSurface || "#1A1D21" }]}>{meal.calories}</Text>
+                        <Text style={[styles.nutritionLabel, { color: colors.onSurfaceVariant || "#666" }]}>cal</Text>
                       </View>
                     )}
                     {meal.protein && (
@@ -294,7 +266,7 @@ export default function MealTracker() {
                         <Text style={[styles.nutritionValue, { color: "#4CAF50" }]}>
                           {meal.protein}g
                         </Text>
-                        <Text style={styles.nutritionLabel}>protein</Text>
+                        <Text style={[styles.nutritionLabel, { color: colors.onSurfaceVariant || "#666" }]}>protein</Text>
                       </View>
                     )}
                     {meal.carbs && (
@@ -302,7 +274,7 @@ export default function MealTracker() {
                         <Text style={[styles.nutritionValue, { color: "#2196F3" }]}>
                           {meal.carbs}g
                         </Text>
-                        <Text style={styles.nutritionLabel}>carbs</Text>
+                        <Text style={[styles.nutritionLabel, { color: colors.onSurfaceVariant || "#666" }]}>carbs</Text>
                       </View>
                     )}
                     {meal.fats && (
@@ -310,7 +282,7 @@ export default function MealTracker() {
                         <Text style={[styles.nutritionValue, { color: "#FF9800" }]}>
                           {meal.fats}g
                         </Text>
-                        <Text style={styles.nutritionLabel}>fats</Text>
+                        <Text style={[styles.nutritionLabel, { color: colors.onSurfaceVariant || "#666" }]}>fats</Text>
                       </View>
                     )}
                   </View>
@@ -318,8 +290,8 @@ export default function MealTracker() {
 
                 {meal.scheduled_time && (
                   <View style={styles.timeRow}>
-                    <Ionicons name="time-outline" size={16} color="#666" />
-                    <Text style={styles.timeText}>
+                    <Ionicons name="time-outline" size={16} color={colors.onSurfaceVariant || "#666"} />
+                    <Text style={[styles.timeText, { color: colors.onSurfaceVariant || "#666" }]}>
                       {new Date(meal.scheduled_time).toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -329,8 +301,8 @@ export default function MealTracker() {
                 )}
 
                 {meal.notes && (
-                  <View style={styles.notesBox}>
-                    <Text style={styles.notesText}>{meal.notes}</Text>
+                  <View style={[styles.notesBox, { backgroundColor: colors.surfaceVariant || "#FFF9C4" }]}>
+                    <Text style={[styles.notesText, { color: colors.onSurfaceVariant || "#333" }]}>{meal.notes}</Text>
                   </View>
                 )}
 
@@ -348,125 +320,14 @@ export default function MealTracker() {
             </CustomCard>
           ))
         ) : (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No meals for this day</Text>
-            <Text style={styles.emptySubtext}>Your caretaker can add meals and this screen updates automatically.</Text>
+          <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.emptyText, { color: colors.onSurfaceVariant || "#999" }]}>No meals for this day</Text>
+            <Text style={[styles.emptySubtext, { color: colors.onSurfaceVariant || "#666" }]}>Your caretaker can add meals and this screen updates automatically.</Text>
           </View>
         )}
       </ScrollView>
 
-      <FAB
-        icon="plus"
-        style={styles.fab}
-        onPress={() => setModalVisible(true)}
-        label="Add Meal"
-      />
 
-      {/* Add Meal Modal */}
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <CustomCard style={styles.modalCard}>
-            <ScrollView>
-              <Text style={styles.modalTitle}>Add Meal</Text>
-
-              <Text style={styles.inputLabel}>Meal Type</Text>
-              <View style={styles.chipRow}>
-                {["breakfast", "lunch", "dinner", "snack"].map((type) => (
-                  <Button
-                    key={type}
-                    mode={mealType === type ? "contained" : "outlined"}
-                    onPress={() => setMealType(type)}
-                    style={styles.typeChip}
-                    buttonColor={mealType === type ? getMealTypeColor(type) : "transparent"}
-                    textColor={mealType === type ? "#FFF" : getMealTypeColor(type)}
-                  >
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                  </Button>
-                ))}
-              </View>
-
-              <TextInput
-                label="Meal Name *"
-                value={mealName}
-                onChangeText={setMealName}
-                style={styles.input}
-                mode="outlined"
-              />
-
-              <View style={styles.row}>
-                <TextInput
-                  label="Calories"
-                  value={calories}
-                  onChangeText={setCalories}
-                  style={[styles.input, styles.halfInput]}
-                  mode="outlined"
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  label="Protein (g)"
-                  value={protein}
-                  onChangeText={setProtein}
-                  style={[styles.input, styles.halfInput]}
-                  mode="outlined"
-                  keyboardType="numeric"
-                />
-              </View>
-
-              <View style={styles.row}>
-                <TextInput
-                  label="Carbs (g)"
-                  value={carbs}
-                  onChangeText={setCarbs}
-                  style={[styles.input, styles.halfInput]}
-                  mode="outlined"
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  label="Fats (g)"
-                  value={fats}
-                  onChangeText={setFats}
-                  style={[styles.input, styles.halfInput]}
-                  mode="outlined"
-                  keyboardType="numeric"
-                />
-              </View>
-
-              <TextInput
-                label="Scheduled Time (e.g., 8:00 AM)"
-                value={scheduledTime}
-                onChangeText={setScheduledTime}
-                style={styles.input}
-                mode="outlined"
-              />
-
-              <TextInput
-                label="Notes (optional)"
-                value={notes}
-                onChangeText={setNotes}
-                style={styles.input}
-                mode="outlined"
-                multiline
-                numberOfLines={3}
-              />
-
-              <View style={styles.modalButtons}>
-                <Button
-                  mode="outlined"
-                  onPress={() => {
-                    setModalVisible(false);
-                    resetForm();
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button mode="contained" onPress={handleAdd}>
-                  Add
-                </Button>
-              </View>
-            </ScrollView>
-          </CustomCard>
-        </View>
-      </Modal>
 
       <CustomSnackbar visible={snackbarVisible} onDismiss={() => setSnackbarVisible(false)}>
         {snackbarMsg}
@@ -479,7 +340,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 60,
-    backgroundColor: "#F5F5F5",
   },
   title: {
     fontSize: 24,
@@ -499,14 +359,12 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     marginBottom: 20,
-    elevation: 2,
-    backgroundColor: "#FFF",
+    elevation: 0,
   },
   summaryTitle: {
     fontSize: 16,
     fontFamily: "Poppins_600SemiBold",
     marginBottom: 12,
-    color: "#333",
   },
   summaryGrid: {
     flexDirection: "row",
@@ -528,8 +386,7 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: 12,
-    elevation: 2,
-    backgroundColor: "#FFF",
+    elevation: 0,
   },
   cardContent: {
     padding: 16,
@@ -559,7 +416,6 @@ const styles = StyleSheet.create({
   mealName: {
     fontSize: 16,
     fontFamily: "Poppins_600SemiBold",
-    color: "#333",
     marginBottom: 4,
   },
   mealTypeChip: {
@@ -593,11 +449,9 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
-    color: "#666",
     marginLeft: 6,
   },
   notesBox: {
-    backgroundColor: "#FFF9C4",
     padding: 8,
     borderRadius: 6,
     marginBottom: 12,
@@ -605,7 +459,6 @@ const styles = StyleSheet.create({
   notesText: {
     fontSize: 13,
     fontFamily: "Poppins_400Regular",
-    color: "#333",
   },
   consumeButton: {
     backgroundColor: "#4CAF50",
@@ -614,19 +467,18 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: "center",
     fontSize: 16,
-    color: "#999",
     fontFamily: "Poppins_400Regular",
   },
   emptyState: {
     marginTop: 50,
-    backgroundColor: "#FFF",
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   emptySubtext: {
     textAlign: "center",
     fontSize: 14,
-    color: "#666",
     marginTop: 8,
     fontFamily: "Poppins_400Regular",
   },

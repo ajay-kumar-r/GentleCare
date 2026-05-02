@@ -1,87 +1,71 @@
-import { useState } from "react";
 import { View, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
 import { Text, Avatar, useTheme, Button } from "react-native-paper";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import BackButton from "../components/BackButton";
-
-const initialPeers = [
-  { id: 1, name: "Alice Johnson", avatar: "https://i.pravatar.cc/150?img=1", online: true },
-  { id: 2, name: "Robert Smith", avatar: "https://i.pravatar.cc/150?img=2", online: false },
-  { id: 3, name: "Maria Garcia", avatar: "https://i.pravatar.cc/150?img=3", online: true },
-];
-
-const suggestedPeople = [
-  { id: 4, name: "David Brown", avatar: "https://i.pravatar.cc/150?img=4" },
-  { id: 5, name: "Sophia Miller", avatar: "https://i.pravatar.cc/150?img=5" },
-  { id: 6, name: "James Wilson", avatar: "https://i.pravatar.cc/150?img=6" },
-];
+import CustomCard from "../components/CustomCard";
 
 export default function SocialConnect() {
   const { colors } = useTheme();
   const router = useRouter();
-  const [peers, setPeers] = useState(initialPeers);
-  const [suggested, setSuggested] = useState(suggestedPeople);
-
-  const handleAddPerson = (person) => {
-    setPeers([...peers, { ...person, online: Math.random() > 0.5 }]);
-    setSuggested(suggested.filter((p) => p.id !== person.id));
-  };
-
-  const handleRemoveSuggestion = (id) => {
-    setSuggested(suggested.filter((p) => p.id !== id));
-  };
-
-  const handleRemoveFriend = (id) => {
-    setPeers(peers.filter((peer) => peer.id !== id));
-  };
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
+    <ScrollView contentContainerStyle={[styles.scrollContainer, { backgroundColor: colors.background }]}>
       <BackButton />
       <View style={styles.container}>
-        <Text style={[styles.title, { color: colors.primary }]}>Social Connect</Text>
+        <Text style={[styles.title, { color: colors.primary }]}>Connect & Chat</Text>
+        <Text style={[styles.subtitle, { color: (colors as any).textSecondary || "#666" }]}>
+          Stay connected with your care team and AI assistant
+        </Text>
 
-        {peers.map((peer) => (
-          <View key={peer.id} style={styles.peerItem}>
-            <TouchableOpacity
-              style={styles.peerInfoContainer}
-              onPress={() => router.push(`/elder/ChatScreen?id=${peer.id}&name=${peer.name}`)}
-            >
-              <Avatar.Image size={48} source={{ uri: peer.avatar }} />
-              <View style={styles.peerInfo}>
-                <Text style={styles.peerName}>{peer.name}</Text>
-                <Text style={peer.online ? styles.online : styles.offline}>
-                  {peer.online ? "🟢 Online" : "🔴 Offline"}
+        {/* AI Assistant Card */}
+        <TouchableOpacity onPress={() => router.push("/elder/Chatbot")} activeOpacity={0.8}>
+          <CustomCard style={[styles.aiCard, { backgroundColor: colors.surface }]}>
+            <View style={styles.aiRow}>
+              <View style={[styles.aiIcon, { backgroundColor: colors.primary + "20" }]}>
+                <Ionicons name="chatbubble-ellipses" size={32} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.aiTitle, { color: colors.onSurface || "#333" }]}>AI Health Assistant</Text>
+                <Text style={[styles.aiDescription, { color: colors.onSurfaceVariant || "#666" }]}>
+                  Talk to our AI assistant about your health, medications, or just to chat.
+                  Supports voice and text.
                 </Text>
               </View>
-            </TouchableOpacity>
-            <Button mode="outlined" compact style={styles.removeFriendButton} onPress={() => handleRemoveFriend(peer.id)}>
-              Remove
-            </Button>
-          </View>
-        ))}
+              <Ionicons name="chevron-forward" size={24} color="#999" />
+            </View>
+          </CustomCard>
+        </TouchableOpacity>
 
-        {suggested.length > 0 && (
-          <>
-            <Text style={[styles.sectionTitle, { color: colors.primary }]}>People You May Know</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestedRow}>
-              {suggested.map((person) => (
-                <View key={person.id} style={styles.suggestedCard}>
-                  <Avatar.Image size={60} source={{ uri: person.avatar }} />
-                  <Text style={styles.suggestedName}>{person.name}</Text>
-                  <View style={styles.buttonGroup}>
-                    <Button mode="contained" compact style={styles.addButton} onPress={() => handleAddPerson(person)}>
-                      Add
-                    </Button>
-                    <Button mode="outlined" compact style={styles.removeButton} onPress={() => handleRemoveSuggestion(person.id)}>
-                      Remove
-                    </Button>
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-          </>
-        )}
+        {/* Text Chat Card */}
+        <TouchableOpacity
+          onPress={() => router.push(`/elder/ChatScreen?id=ai&name=Health Assistant`)}
+          activeOpacity={0.8}
+        >
+          <CustomCard style={[styles.chatCard, { backgroundColor: colors.surface }]}>
+            <View style={styles.aiRow}>
+              <View style={[styles.aiIcon, { backgroundColor: "#81C784" + "30" }]}>
+                <Ionicons name="create" size={28} color="#4CAF50" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.aiTitle, { color: colors.onSurface || "#333" }]}>Text Chat</Text>
+                <Text style={[styles.aiDescription, { color: colors.onSurfaceVariant || "#666" }]}>
+                  Prefer typing? Chat with the AI assistant via text messages.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#999" />
+            </View>
+          </CustomCard>
+        </TouchableOpacity>
+
+        {/* Info Section */}
+        <CustomCard style={[styles.infoCard, { backgroundColor: colors.surfaceVariant || "#EBF5FF" }]}>
+          <Ionicons name="information-circle-outline" size={24} color={colors.primary} />
+          <Text style={[styles.infoText, { color: colors.onSurfaceVariant || "#333" }]}>
+            Your caretaker can see your health data in real-time. Any medications you log,
+            health records added, or meals tracked are automatically shared with them.
+          </Text>
+        </CustomCard>
       </View>
     </ScrollView>
   );
@@ -90,95 +74,69 @@ export default function SocialConnect() {
 const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
-    backgroundColor: "#F5F5F5",
   },
   container: {
     padding: 20,
+    paddingTop: 50,
   },
   title: {
     fontSize: 24,
-    paddingTop: 20,
     textAlign: "center",
     fontFamily: "Poppins_700Bold",
-    textShadowColor: "rgba(0, 0, 0, 0.3)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-    marginBottom: 10,
+    marginBottom: 4,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: "Poppins_700Bold",
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  peerItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 30,
-    marginBottom: 10,
-    elevation: 2,
-  },
-  peerInfoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  peerInfo: {
-    marginLeft: 15,
-  },
-  peerName: {
-    fontSize: 16,
-    fontFamily: "Poppins_500Medium",
-  },
-  online: {
-    color: "green",
+  subtitle: {
     fontSize: 14,
+    textAlign: "center",
     fontFamily: "Poppins_400Regular",
+    marginBottom: 24,
   },
-  offline: {
-    color: "red",
-    fontSize: 14,
-    fontFamily: "Poppins_400Regular",
-  },
-  removeFriendButton: {
-    borderColor: "red",
-  },
-  suggestedRow: {
-    flexDirection: "row",
-    gap: 15,
-    paddingVertical: 10,
-  },
-  suggestedCard: {
-    width: 200,
-    height: 200,
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#fff",
+  aiCard: {
+    borderRadius: 16,
     padding: 20,
-    borderRadius: 10,
-    elevation: 3,
+    marginBottom: 16,
+    elevation: 0,
   },
-  suggestedName: {
-    fontSize: 14,
-    fontFamily: "Poppins_500Medium",
-    textAlign: "center",
-    marginVertical: 5,
+  chatCard: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    elevation: 0,
   },
-  buttonGroup: {
+  aiRow: {
     flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  aiIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: "center",
-    gap: 5,
+    alignItems: "center",
   },
-  addButton: {
-    flex: 1,
-    borderRadius: 5,
+  aiTitle: {
+    fontSize: 17,
+    fontFamily: "Poppins_600SemiBold",
+    marginBottom: 4,
   },
-  removeButton: {
+  aiDescription: {
+    fontSize: 13,
+    fontFamily: "Poppins_400Regular",
+    lineHeight: 18,
+  },
+  infoCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  infoText: {
     flex: 1,
-    borderRadius: 5,
-    borderColor: "red",
+    fontSize: 13,
+    fontFamily: "Poppins_400Regular",
+    lineHeight: 20,
   },
 });
-

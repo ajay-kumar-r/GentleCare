@@ -115,9 +115,9 @@ export default function Medications() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <BackButton />
-      <Text style={styles.header}>💊 Medications</Text>
+      <Text style={[styles.header, { color: colors.primary }]}>💊 Medications</Text>
 
       <ScrollView 
         style={styles.scrollView}
@@ -128,8 +128,8 @@ export default function Medications() {
         {medsForSelectedDate.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>💊</Text>
-            <Text style={styles.noMedsText}>No medications assigned yet.</Text>
-            <Text style={styles.noMedsSubtext}>Your caretaker will add medications for you. This page updates automatically when they do.</Text>
+            <Text style={[styles.noMedsText, { color: colors.onSurfaceVariant || "#333" }]}>No medications assigned yet.</Text>
+            <Text style={[styles.noMedsSubtext, { color: colors.onSurfaceVariant || "#666" }]}>Your caretaker will add medications for you. This page updates automatically when they do.</Text>
           </View>
         ) : (
           medsForSelectedDate.map((med: any) => {
@@ -143,8 +143,8 @@ export default function Medications() {
                 <View style={styles.cardContent}>
                   <View style={styles.cardTop}>
                     <View style={styles.medNameRow}>
-                      <Text style={styles.medName}>{med.name}</Text>
-                      <Text style={styles.medDosage}>{med.dosage}</Text>
+                      <Text style={[styles.medName, { color: colors.onSurface || "#1A1D21" }]}>{med.name}</Text>
+                      <Text style={[styles.medDosage, { color: colors.onSurfaceVariant || "#666" }]}>{med.dosage}</Text>
                     </View>
                     <View style={[
                       styles.statusBadge,
@@ -160,20 +160,20 @@ export default function Medications() {
                   </View>
 
                   <View style={styles.medInfo}>
-                    <View style={styles.infoItem}>
+                    <View style={[styles.infoItem, { backgroundColor: colors.surfaceVariant || "#F0F0F0" }]}>
                       <Text style={styles.infoIcon}>⏰</Text>
-                      <Text style={styles.infoText}>{med.time}</Text>
+                      <Text style={[styles.infoText, { color: colors.onSurfaceVariant || "#444" }]}>{med.time}</Text>
                     </View>
-                    <View style={styles.infoItem}>
+                    <View style={[styles.infoItem, { backgroundColor: colors.surfaceVariant || "#F0F0F0" }]}>
                       <Text style={styles.infoIcon}>🔄</Text>
-                      <Text style={styles.infoText}>{med.frequency}</Text>
+                      <Text style={[styles.infoText, { color: colors.onSurfaceVariant || "#444" }]}>{med.frequency}</Text>
                     </View>
                   </View>
 
                   {med.instructions && (
-                    <View style={styles.instructionsBox}>
-                      <Text style={styles.instructionsLabel}>📝 Instructions:</Text>
-                      <Text style={styles.instructionsText}>{med.instructions}</Text>
+                    <View style={[styles.instructionsBox, { backgroundColor: colors.surfaceVariant || "#FFF9E6", borderLeftColor: colors.primary }]}>
+                      <Text style={[styles.instructionsLabel, { color: colors.primary }]}>📝 Instructions:</Text>
+                      <Text style={[styles.instructionsText, { color: colors.onSurfaceVariant || "#444" }]}>{med.instructions}</Text>
                     </View>
                   )}
 
@@ -221,15 +221,13 @@ export default function Medications() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    paddingTop: 60, // Increased to avoid notch
-    backgroundColor: "#F5F5F5" 
+    paddingTop: 60,
   },
   header: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontFamily: "Poppins_700Bold",
     marginBottom: 20,
     textAlign: "center",
-    color: "#333",
   },
   scrollView: {
     flex: 1,
@@ -249,17 +247,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     textAlign: 'center',
     marginBottom: 8,
-    fontWeight: '600',
-    color: "#333",
+    fontFamily: "Poppins_600SemiBold",
   },
   noMedsSubtext: {
     fontSize: 14,
     textAlign: 'center',
-    color: '#666',
+    fontFamily: "Poppins_400Regular",
   },
   card: {
     marginBottom: 16,
-    elevation: 3,
+    elevation: 0,
     borderRadius: 12,
   },
   cardContent: {
@@ -277,14 +274,12 @@ const styles = StyleSheet.create({
   },
   medName: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1976D2',
+    fontFamily: "Poppins_700Bold",
     marginBottom: 4,
   },
   medDosage: {
     fontSize: 16,
-    color: '#666',
-    fontWeight: '600',
+    fontFamily: "Poppins_600SemiBold",
   },
   medInfo: {
     flexDirection: 'row',
@@ -294,7 +289,6 @@ const styles = StyleSheet.create({
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F0F0',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -305,27 +299,23 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
-    color: '#444',
-    fontWeight: '500',
+    fontFamily: "Poppins_500Medium",
   },
   instructionsBox: {
-    backgroundColor: '#FFF9E6',
     padding: 12,
     borderRadius: 8,
     marginBottom: 12,
     borderLeftWidth: 3,
-    borderLeftColor: '#FFC107',
   },
   instructionsLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
+    fontFamily: "Poppins_600SemiBold",
     marginBottom: 4,
   },
   instructionsText: {
     fontSize: 14,
-    color: '#444',
     lineHeight: 20,
+    fontFamily: "Poppins_400Regular",
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -351,7 +341,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: "Poppins_600SemiBold",
     color: '#333',
   },
   actionButtons: {

@@ -145,7 +145,8 @@ export default function Notifications() {
             >
               <CustomCard style={[
                 styles.notificationCard,
-                notif.is_read ? styles.readCard : {}
+                { backgroundColor: colors.surface },
+                notif.is_read ? [styles.readCard, { backgroundColor: colors.surfaceVariant }] : {}
               ]}>
                 <View style={styles.cardContent}>
                   <View style={styles.iconContainer}>
@@ -158,21 +159,22 @@ export default function Notifications() {
                   <View style={styles.messageContainer}>
                     <Text style={[
                       styles.message,
-                      notif.is_read && styles.readMessage
+                      { color: colors.onSurface || "#333" },
+                      notif.is_read && [styles.readMessage, { color: colors.onSurfaceVariant || "#999" }]
                     ]}>
                       {notif.message}
                     </Text>
-                    <Text style={styles.timestamp}>
+                    <Text style={[styles.timestamp, { color: colors.onSurfaceVariant || "#999" }]}>
                       {new Date(notif.created_at).toLocaleString()}
                     </Text>
                   </View>
-                  {!notif.is_read && <View style={styles.unreadDot} />}
+                  {!notif.is_read && <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
                 </View>
               </CustomCard>
             </TouchableOpacity>
           ))
         ) : (
-          <Text style={styles.noNotifications}>
+          <Text style={[styles.noNotifications, { color: colors.onSurfaceVariant || "#666" }]}>
             No new notifications.
           </Text>
         )}
@@ -186,7 +188,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 60,
     paddingHorizontal: 20,
-    backgroundColor: "#F5F5F5",
   },
   header: {
     flexDirection: "row",
@@ -206,16 +207,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Poppins_400Regular",
     marginTop: 50,
-    color: "#666",
   },
   notificationCard: {
     marginBottom: 12,
-    elevation: 2,
-    backgroundColor: "#FFF",
+    elevation: 0,
   },
   readCard: {
     opacity: 0.7,
-    backgroundColor: "#F8F8F8",
   },
   cardContent: {
     flexDirection: "row",
@@ -232,21 +230,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
     marginBottom: 4,
-    color: "#333",
   },
   readMessage: {
-    color: "#999",
   },
   timestamp: {
     fontSize: 12,
-    color: "#999",
     fontFamily: "Poppins_400Regular",
   },
   unreadDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#4CAF50",
     marginLeft: 8,
   },
 });

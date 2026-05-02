@@ -13,30 +13,31 @@ import { useLocalSearchParams } from "expo-router";
 import { Audio } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 import BackButton from "../components/BackButton";
-import { API_BASE_URL } from "../../services/api";
+import { API_BASE_URL, storage } from "../../services/api";
 
 const API_URL = API_BASE_URL;
 
 export default function ChatScreen() {
   const { name } = useLocalSearchParams();
   const { colors } = useTheme();
-  const soundObject = useRef(new Audio.Sound()).current;
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const displayName = (name as string) || 'Health Assistant';
 
   const [messages, setMessages] = useState([
-    { id: 1, sender: "peer", text: "Hi! How are you today?" },
+    { id: 1, sender: "peer", text: `Hi! I'm your AI health assistant. How can I help you today?` },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
-  const flatListRef = useRef(null);
+
+  const flatListRef = useRef<any>(null);
 
   useEffect(() => {
     return () => {
-      if (soundObject) {
-        soundObject.unloadAsync();
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
       }
     };
-  }, [soundObject]);
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     if (flatListRef.current && messages.length > 0) {
@@ -60,11 +61,13 @@ export default function ChatScreen() {
     setIsLoading(true);
     
     try {
-      // Get chatbot response
+      const token = await storage.getToken();
+      
       const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ message: userInput }),
       });
@@ -97,11 +100,14 @@ export default function ChatScreen() {
 
   const speakResponse = async (text) => {
     try {
+      const token = await storage.getToken();
+      
       // Get speech audio from API
       const response = await fetch(`${API_URL}/speak`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ text }),
       });
@@ -123,8 +129,13 @@ export default function ChatScreen() {
         });
         
         // Play the audio
-        await soundObject.loadAsync({ uri: audioPath });
-        await soundObject.playAsync();
+        if (soundRef.current) {
+          await soundRef.current.unloadAsync();
+        } else {
+          soundRef.current = new Audio.Sound();
+        }
+        await soundRef.current.loadAsync({ uri: audioPath });
+        await soundRef.current.playAsync();
       };
       
       reader.readAsDataURL(blob);
@@ -136,13 +147,16 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       keyboardVerticalOffset={80}
     >
       <BackButton />
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <Avatar.Text size={36} label={name?.charAt(0) || "U"} style={styles.avatar} />
-        <Text style={styles.name}>{name}</Text>
+        <Avatar.Icon size={36} icon="robot" style={styles.avatar} color={colors.primary} />
+        <View>
+          <Text style={styles.name}>{displayName}</Text>
+          <Text style={styles.headerSub}>AI Assistant</Text>
+        </View>
       </View>
 
       <FlatList
@@ -155,10 +169,10 @@ export default function ChatScreen() {
           <View
             style={[
               styles.messageBubble,
-              item.sender === "me" ? styles.myMessage : styles.peerMessage,
+              item.sender === "me" ? [styles.myMessage, { backgroundColor: colors.primaryContainer || (colors.primary + "30") }] : [styles.peerMessage, { backgroundColor: colors.surfaceVariant || "#EEE" }],
             ]}
           >
-            <Text style={styles.messageText}>{item.text}</Text>
+            <Text style={[styles.messageText, { color: colors.onSurface || "#1A1D21" }]}>{item.text}</Text>
           </View>
         )}
       />
@@ -166,13 +180,14 @@ export default function ChatScreen() {
       {isLoading && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={styles.loadingText}>Thinking...</Text>
+          <Text style={[styles.loadingText, { color: colors.onSurfaceVariant || "#666" }]}>Thinking...</Text>
         </View>
       )}
 
-      <View style={styles.inputContainer}>
+      <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderTopColor: colors.surfaceVariant }]}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.surfaceVariant || "#F0F0F0", color: colors.onSurface || "#1A1D21" }]}
+          placeholderTextColor={colors.onSurfaceVariant || "#999"}
           placeholder="Type your message..."
           value={input}
           onChangeText={setInput}
@@ -193,17 +208,12 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9F9F9",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     padding: 10,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    elevation: 0,
   },
   avatar: {
     marginLeft: 5,
@@ -215,6 +225,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: "Poppins_600SemiBold",
   },
+  headerSub: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+    fontFamily: "Poppins_400Regular",
+  },
   messageContainer: {
     padding: 10,
     flexGrow: 1,
@@ -224,19 +239,13 @@ const styles = StyleSheet.create({
     padding: 12,
     marginVertical: 5,
     borderRadius: 16,
-    elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
+    elevation: 0,
   },
   myMessage: {
     alignSelf: "flex-end",
-    backgroundColor: "#DCF8C6",
   },
   peerMessage: {
     alignSelf: "flex-start",
-    backgroundColor: "#EEE",
   },
   messageText: {
     fontSize: 16,
@@ -245,15 +254,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: 10,
     borderTopWidth: 1,
-    borderTopColor: "#DDD",
     alignItems: "center",
-    backgroundColor: "white",
   },
   input: {
     flex: 1,
     padding: 10,
     borderRadius: 20,
-    backgroundColor: "#F0F0F0",
     fontSize: 16,
     marginRight: 5,
     maxHeight: 120,
@@ -266,7 +272,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginLeft: 8,
-    color: "#666",
     fontSize: 14,
   }
 });
