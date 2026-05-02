@@ -3,6 +3,8 @@ import { useEffect } from 'react';
 import {
   useFonts,
   Poppins_700Bold,
+  Poppins_600SemiBold,
+  Poppins_500Medium,
   Poppins_400Regular,
 } from "@expo-google-fonts/poppins";
 import { useColorScheme, ActivityIndicator, StatusBar, View } from "react-native";
@@ -14,7 +16,7 @@ import notificationService from "../services/notificationService";
 import { socketService, storage } from "../services/api";
 
 export default function Layout() {
-  let [fontsLoaded] = useFonts({ Poppins_700Bold, Poppins_400Regular });
+  let [fontsLoaded] = useFonts({ Poppins_700Bold, Poppins_600SemiBold, Poppins_500Medium, Poppins_400Regular });
 
   const colorScheme = useColorScheme();
   const theme = getTheme(colorScheme === "dark");

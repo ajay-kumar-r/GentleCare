@@ -1,74 +1,65 @@
-import { View, StyleSheet, TouchableOpacity, Image, Animated, Dimensions } from "react-native";
-import { Text, useTheme } from "react-native-paper";
+import { View, StyleSheet, TouchableOpacity, Image, Dimensions, SafeAreaView } from "react-native";
+import { Text, useTheme, Button } from "react-native-paper";
 import { useRouter } from "expo-router";
-import { useRef } from "react";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function LoginPage() {
   const { colors } = useTheme();
   const router = useRouter();
 
-  const elderPressAnim = useRef(new Animated.Value(1)).current;
-  const caretakerPressAnim = useRef(new Animated.Value(1)).current;
-
-  const handlePress = (role: "elder" | "caretaker") => {
-    const anim = role === "elder" ? elderPressAnim : caretakerPressAnim;
-
-    Animated.sequence([
-      Animated.timing(anim, { toValue: 0.93, duration: 50, useNativeDriver: true }),
-      Animated.timing(anim, { toValue: 1, duration: 50, useNativeDriver: true }),
-    ]).start(() => {
-      if (role === "elder") {
-        router.push("/auth/elderLogin");
-      } else {
-        router.push("/auth/caretakerLogin");
-      }
-    });
-  };
-
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Image source={require("../../assets/images/caring-hands.png")} style={styles.logo} />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={styles.header}>
+        <Image source={require("../../assets/images/caring-hands.png")} style={styles.logo} />
+        <Text style={[styles.title, { color: colors.primary }]}>GentleCare</Text>
+        <Text style={[styles.subtitle, { color: colors.onSurfaceVariant || "#666" }]}>
+          Please select your role to continue
+        </Text>
+      </View>
 
-      <Text style={[styles.title, { color: colors.primary }]}>Welcome</Text>
-      <Text style={[styles.subtitle, { color: "black" }]}>
-        Choose your role to continue
-      </Text>
-
-      <View style={styles.cardContainer}>
-        <TouchableOpacity activeOpacity={1} onPress={() => handlePress("elder")}>
-          <Animated.View style={[styles.animatedCard, { transform: [{ scale: elderPressAnim }] }]}>
-            <View style={styles.card}>
-              <View style={styles.cardContent}>
-                <Image source={require("../../assets/images/elder-icon.png")} style={styles.image} />
-                <Text style={[styles.cardText, { color: colors.primary }]}>Elder</Text>
-              </View>
-            </View>
-          </Animated.View>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={[styles.roleButton, { backgroundColor: colors.surface, borderColor: colors.border || '#E2E8F0', borderWidth: 1 }]}
+          onPress={() => router.push("/auth/elderLogin")}
+        >
+          <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
+            <MaterialCommunityIcons name="face-man-profile" size={32} color={colors.primary} />
+          </View>
+          <View style={styles.buttonTextContainer}>
+            <Text style={[styles.buttonTitle, { color: colors.onSurface || "#1A1D21" }]}>Elder</Text>
+            <Text style={[styles.buttonDescription, { color: colors.onSurfaceVariant || "#666" }]}>Login to manage your health</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={24} color={colors.onSurfaceVariant || "#666"} />
         </TouchableOpacity>
 
-        <TouchableOpacity activeOpacity={1} onPress={() => handlePress("caretaker")}>
-          <Animated.View style={[styles.animatedCard, { transform: [{ scale: caretakerPressAnim }] }]}>
-            <View style={styles.card}>
-              <View style={styles.cardContent}>
-                <Image source={require("../../assets/images/caretaker-icon.png")} style={styles.image} />
-                <Text style={[styles.cardText, { color: colors.primary }]}>Caretaker</Text>
-              </View>
-            </View>
-          </Animated.View>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={[styles.roleButton, { backgroundColor: colors.surface, borderColor: colors.border || '#E2E8F0', borderWidth: 1 }]}
+          onPress={() => router.push("/auth/caretakerLogin")}
+        >
+          <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
+            <MaterialCommunityIcons name="account-heart" size={32} color={colors.primary} />
+          </View>
+          <View style={styles.buttonTextContainer}>
+            <Text style={[styles.buttonTitle, { color: colors.onSurface || "#1A1D21" }]}>Caretaker</Text>
+            <Text style={[styles.buttonDescription, { color: colors.onSurfaceVariant || "#666" }]}>Login to monitor your patients</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={24} color={colors.onSurfaceVariant || "#666"} />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.registerContainer}>
-  <Text style={[styles.registerText, { color: (colors as any).onBackground || colors.primary }]}> 
-          New User?{" "}
+      <View style={styles.footer}>
+        <Text style={[styles.footerText, { color: colors.onSurfaceVariant || "#666" }]}>
+          Don't have an account?{" "}
         </Text>
         <TouchableOpacity onPress={() => router.push("/auth/signup")}>
-          <Text style={[styles.registerLink, { color: colors.primary }]}>
-            Register Here
+          <Text style={[styles.footerLink, { color: colors.primary }]}>
+            Sign up
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -77,69 +68,73 @@ const { height } = Dimensions.get("window");
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: height * 0.08,
-    paddingHorizontal: 20,
-    alignItems: "center",
+  },
+  header: {
+    paddingTop: height * 0.1,
+    paddingHorizontal: 24,
+    marginBottom: 40,
+    alignItems: 'center'
   },
   logo: {
-    width: 90,
-    height: 90,
+    width: 80,
+    height: 80,
     resizeMode: "contain",
-    marginBottom: 15,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontFamily: "Poppins_700Bold",
-    marginBottom: 5,
+    marginBottom: 8,
+    letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: "Poppins_400Regular",
-    marginBottom: 35,
+    textAlign: "center",
   },
-  cardContainer: {
+  buttonContainer: {
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  roleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+  },
+  iconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  buttonTextContainer: {
+    flex: 1,
+  },
+  buttonTitle: {
+    fontSize: 18,
+    fontFamily: "Poppins_600SemiBold",
+    marginBottom: 2,
+  },
+  buttonDescription: {
+    fontSize: 13,
+    fontFamily: "Poppins_400Regular",
+  },
+  footer: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 20,
+    alignItems: 'center',
+    marginTop: 'auto',
+    marginBottom: height * 0.05,
   },
-  animatedCard: {
-    width: 150,
+  footerText: {
+    fontSize: 15,
+    fontFamily: "Poppins_400Regular",
   },
-  card: {
-    width: 150,
-    borderRadius: 15,
-    elevation: 4,
-    backgroundColor: "white",
-  },
-  cardContent: {
-    alignItems: "center",
-    paddingVertical: 30,
-  },
-  image: {
-    width: 70,
-    height: 70,
-    marginBottom: 15,
-  },
-  cardText: {
-    fontSize: 20,
-    fontFamily: "Poppins_700Bold",
-    textTransform: "capitalize",
-  },
-  registerContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 40,
-  },
-  registerText: {
-    fontSize: 16,
-    fontFamily: "Poppins_700Bold",
-    textShadowColor: "rgba(0, 0, 0, 0.5)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  registerLink: {
-    fontSize: 16,
-    fontFamily: "Poppins_700Bold",
-    textDecorationLine: "underline",
+  footerLink: {
+    fontSize: 15,
+    fontFamily: "Poppins_600SemiBold",
   },
 });

@@ -13,8 +13,15 @@ Server/__pycache__/
 Server/*.pyc
 Server/instance/*.db
 
+# Root-level instance (created by dev scripts)
+instance/
+
+# Logs
+*.log
+server_debug.log
+
 # Secrets / env
 .env
 .env.*
 Server/*.json
-!Server/API_DOCUMENTATION.md
+!Server/package.json

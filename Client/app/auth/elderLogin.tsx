@@ -3,16 +3,17 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
+  SafeAreaView
 } from "react-native";
 import { Text, TextInput, Button, useTheme } from "react-native-paper";
 import { useRouter } from "expo-router";
 import BackButton from "../components/BackButton";
 import { authAPI } from "../../services/api";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function ElderLoginPage() {
   const { colors } = useTheme();
@@ -37,7 +38,6 @@ export default function ElderLoginPage() {
         return;
       }
 
-      // Navigate to elder dashboard
       router.replace('/elder/Dashboard');
     } catch (error: any) {
       Alert.alert('Login Failed', error.message || 'Invalid email or password');
@@ -47,134 +47,147 @@ export default function ElderLoginPage() {
   };
 
   return (
-    <View style={styles.container}>
-      <BackButton />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={styles.headerRow}>
+        <BackButton />
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.innerContainer}
+        style={styles.keyboardView}
       >
-        <Text style={[styles.title, { color: colors.primary }]}>Elder Login</Text>
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <View style={[styles.iconCircle, { backgroundColor: colors.primary + '15' }]}>
+              <MaterialCommunityIcons name="face-man-profile" size={48} color={colors.primary} />
+            </View>
+            <Text style={[styles.title, { color: colors.onSurface || "#1A1D21" }]}>Elder Login</Text>
+            <Text style={[styles.subtitle, { color: colors.onSurfaceVariant || "#666" }]}>Welcome back. Please enter your details.</Text>
+          </View>
 
-        <View style={styles.cardContainer}>
-          <Image
-            source={require("../../assets/images/elder-icon.png")}
-            style={styles.logo}
-          />
-        </View>
+          <View style={styles.form}>
+            <TextInput
+              label="Email"
+              mode="outlined"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+              style={styles.input}
+              autoCapitalize="none"
+              theme={{ colors: { primary: colors.primary } }}
+              left={<TextInput.Icon icon="email-outline" color={colors.onSurfaceVariant} />}
+            />
+            
+            <TextInput
+              label="Password"
+              mode="outlined"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              style={styles.input}
+              theme={{ colors: { primary: colors.primary } }}
+              left={<TextInput.Icon icon="lock-outline" color={colors.onSurfaceVariant} />}
+            />
 
-        <TextInput
-          label="Email"
-          mode="outlined"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-          style={styles.input}
-          theme={{ colors: { primary: colors.primary } }}
-        />
-        <TextInput
-          label="Password"
-          mode="outlined"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-          style={styles.input}
-          theme={{ colors: { primary: colors.primary } }}
-        />
-        <Button
-          mode="contained"
-          onPress={handleLogin}
-          style={styles.button}
-          disabled={loading}
-        >
-          {loading ? <ActivityIndicator color="#fff" /> : 'Login'}
-        </Button>
-        <TouchableOpacity onPress={() => router.push("/auth/forgetpsw")}>
-          <Text style={[styles.link, { color: colors.primary, textAlign: "center" }]}>
-            Forgot Password?
-          </Text>
-        </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={() => router.push("/auth/forgetpsw")}
+              style={styles.forgotPassword}
+            >
+              <Text style={{ color: colors.primary, fontFamily: "Poppins_500Medium" }}>
+                Forgot Password?
+              </Text>
+            </TouchableOpacity>
 
-        <View style={styles.registerContainer}>
-          <Text style={[styles.registerText, { color: colors.text }]}>
-            New User?{" "}
-          </Text>
-          <TouchableOpacity onPress={() => router.push("/auth/signup")}>
-            <Text style={[styles.registerLink, { color: colors.primary }]}>
-              Register Here
+            <Button
+              mode="contained"
+              onPress={handleLogin}
+              style={[styles.button, { backgroundColor: colors.primary }]}
+              labelStyle={styles.buttonLabel}
+              disabled={loading}
+            >
+              {loading ? <ActivityIndicator color="#fff" /> : 'Log In'}
+            </Button>
+          </View>
+
+          <View style={styles.footer}>
+            <Text style={{ color: colors.onSurfaceVariant || "#666", fontFamily: "Poppins_400Regular" }}>
+              Don't have an account?{" "}
             </Text>
-          </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/auth/signup")}>
+              <Text style={{ color: colors.primary, fontFamily: "Poppins_600SemiBold" }}>
+                Sign up
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerRow: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    alignItems: 'flex-start',
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 40,
+  },
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     justifyContent: "center",
     alignItems: "center",
-  },
-  innerContainer: {
-    width: "80%",
-    paddingHorizontal: 20,
-  },
-  logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 20,
-    alignSelf: "center",
+    marginBottom: 16,
   },
   title: {
-    fontSize: 36,
+    fontSize: 28,
     fontFamily: "Poppins_700Bold",
-    marginBottom: 30,
-    textTransform: "uppercase",
-    letterSpacing: 1.5,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontFamily: "Poppins_400Regular",
     textAlign: "center",
   },
-  input: {
+  form: {
     width: "100%",
-    marginBottom: 15,
+  },
+  input: {
+    marginBottom: 16,
+    backgroundColor: 'transparent',
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginBottom: 24,
   },
   button: {
-    width: "100%",
-    paddingVertical: 5,
-    borderRadius: 5,
+    borderRadius: 12,
+    paddingVertical: 6,
+    elevation: 0,
   },
-  link: {
-    marginTop: 10,
-    fontSize: 18,
+  buttonLabel: {
+    fontSize: 16,
     fontFamily: "Poppins_600SemiBold",
-    textDecorationLine: "underline",
-    textShadowColor: "rgba(0, 0, 0, 0.3)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    letterSpacing: 0.5,
   },
-  registerContainer: {
-    flexDirection: "row",
-    marginTop: 20,
-    justifyContent: "center",
-  },
-  registerText: {
-    fontSize: 18,
-    fontFamily: "Poppins_400Regular",
-    textShadowColor: "rgba(0, 0, 0, 0.9)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  registerLink: {
-    fontSize: 18,
-    fontFamily: "Poppins_600SemiBold",
-    textDecorationLine: "underline",
-    marginLeft: 5,
-    textShadowColor: "rgba(0, 0, 0, 0.3)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  cardContainer: {
+  footer: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 20,
+    marginTop: 32,
   },
 });
