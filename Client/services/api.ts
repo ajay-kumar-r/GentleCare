@@ -7,7 +7,7 @@ import { Platform } from 'react-native';
 import io from 'socket.io-client';
 
 // Use env-configured backend URL, with simulator-friendly defaults for local dev.
-const defaultLocalApi = Platform.OS === 'android' ? 'http://10.0.2.2:5001' : 'http://127.0.0.1:5001';
+const defaultLocalApi = 'http://192.168.1.67:5001'; // Fixed for physical phone testing
 const defaultProductionApi = 'https://gentlecare-server.onrender.com';
 
 // For static site deployments, check if we're on web and not on localhost
@@ -63,9 +63,6 @@ export const storage = {
 async function apiRequest(endpoint: string, options: any = {}) {
   const token = await storage.getToken();
   
-  console.log('API Request:', endpoint);
-  console.log('Token:', token ? `${token.substring(0, 20)}...` : 'No token');
-  
   const headers: any = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -85,11 +82,17 @@ async function apiRequest(endpoint: string, options: any = {}) {
       let errorMsg = `Request failed with status ${response.status}`;
       try {
         const error = await response.json();
-        errorMsg = error.error || errorMsg;
+        errorMsg = error.error || error.msg || errorMsg;
       } catch (e) {
-        // If JSON parsing fails, use status text
         errorMsg = response.statusText || errorMsg;
       }
+      
+      if (response.status === 401 || response.status === 422) {
+        // Clear token silently
+        await storage.removeToken();
+        throw new Error("AUTH_ERROR: " + errorMsg);
+      }
+      
       throw new Error(errorMsg);
     }
     
@@ -107,16 +110,23 @@ async function apiRequest(endpoint: string, options: any = {}) {
 // ===========================
 
 export const socketService = {
+  _userId: null as number | null,
+  
   connect(userId: number) {
+    this._userId = userId;
     if (socket) return socket;
     
     socket = io(SOCKET_URL, {
       reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 10,
     });
     
     socket.on('connect', () => {
       console.log('Socket connected');
-      socket.emit('join', { user_id: userId });
+      if (this._userId) {
+        socket.emit('join', { user_id: this._userId });
+      }
     });
     
     socket.on('disconnect', () => {
@@ -131,6 +141,7 @@ export const socketService = {
       socket.disconnect();
       socket = null;
     }
+    this._userId = null;
   },
   
   on(event: string, callback: Function) {
@@ -139,9 +150,13 @@ export const socketService = {
     }
   },
   
-  off(event: string) {
+  off(event: string, callback?: Function) {
     if (socket) {
-      socket.off(event);
+      if (callback) {
+        socket.off(event, callback);
+      } else {
+        socket.off(event);
+      }
     }
   }
 };
@@ -176,19 +191,15 @@ export const authAPI = {
       body: JSON.stringify({ email, password }),
     });
     
-    console.log('Login response:', response);
-    console.log('Access token:', response.access_token ? 'exists' : 'missing');
-    
     await storage.setToken(response.access_token);
     await storage.setUser(response.user);
-    
-    // Verify token was stored
-    const storedToken = await storage.getToken();
-    console.log('Stored token:', storedToken ? 'success' : 'failed');
-    
     socketService.connect(response.user.id);
     
     return response;
+  },
+  
+  async getProfile() {
+    return await apiRequest('/auth/profile');
   },
   
   async linkCaretaker(caretakerEmail: string) {
@@ -201,6 +212,16 @@ export const authAPI = {
   async logout() {
     socketService.disconnect();
     await storage.clear();
+  }
+};
+
+// ===========================
+// Dashboard API
+// ===========================
+
+export const dashboardAPI = {
+  async getSummary() {
+    return await apiRequest('/dashboard/summary');
   }
 };
 
@@ -275,6 +296,13 @@ export const healthAPI = {
   }) {
     return await apiRequest('/health-records', {
       method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  
+  async updateRecord(recordId: number, data: { value?: string; notes?: string }) {
+    return await apiRequest(`/health-records/${recordId}`, {
+      method: 'PUT',
       body: JSON.stringify(data),
     });
   },

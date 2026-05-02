@@ -51,11 +51,16 @@ class NotificationService {
         return null;
       }
 
-      const token = (await Notifications.getExpoPushTokenAsync()).data;
-      console.log('Push token:', token);
-
-      // Store token locally
-      await AsyncStorage.setItem('pushToken', token);
+      let token = null;
+      try {
+        token = (await Notifications.getExpoPushTokenAsync({
+          projectId: Constants.expoConfig?.extra?.eas?.projectId || 'gentlecare-dummy'
+        })).data;
+        console.log('Push token:', token);
+        await AsyncStorage.setItem('pushToken', token);
+      } catch (tokenErr) {
+        console.warn('Silent push token failure (OK for local dev):', tokenErr);
+      }
 
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('default', {
@@ -333,13 +338,22 @@ class NotificationService {
 
   // Run all checks
   private async runAllChecks() {
-    console.log('Running smart notification checks...');
-    await Promise.all([
-      this.checkMedicationReminders(),
-      this.checkMealReminders(),
-      this.checkAppointmentReminders(),
-      this.checkHealthReminders(),
-    ]);
+    try {
+      const token = await AsyncStorage.getItem('auth_token');
+      if (!token) {
+        return; // Skip checks if not logged in
+      }
+      
+      console.log('Running smart notification checks...');
+      await Promise.all([
+        this.checkMedicationReminders(),
+        this.checkMealReminders(),
+        this.checkAppointmentReminders(),
+        this.checkHealthReminders(),
+      ]);
+    } catch (e) {
+      console.log('Skipping notification checks:', e);
+    }
   }
 
   // Send notification

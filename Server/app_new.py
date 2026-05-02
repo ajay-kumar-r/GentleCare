@@ -1,105 +1,98 @@
 """
-GentleCare Backend API - Complete Implementation
+GentleCare Backend API - Production-Ready Implementation
 Handles authentication, real-time sync, and all app features
 """
+import os
+import io
+import re
+import json
+import logging
+from datetime import datetime, timedelta, timezone
+
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_bcrypt import Bcrypt
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from models import db, User, ElderProfile, CaretakerProfile, Medication, MedicationLog, HealthRecord, Meal, Appointment, EmergencyContact, Notification, LocationLog, Prescription
-from datetime import datetime, timedelta
-import os
-import io
-import wave
-import json
 
-# Render is currently using Python 3.14, where the protobuf upb extension can fail to import.
-# Force the pure-Python protobuf implementation before importing Google Cloud clients.
 os.environ.setdefault('PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION', 'python')
 
 # Google Cloud imports
 from google.cloud import speech, texttospeech
 import google.generativeai as genai
 
+# Logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+logger = logging.getLogger('gentlecare')
+
 app = Flask(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 INSTANCE_DIR = os.path.join(BASE_DIR, 'instance')
 os.makedirs(INSTANCE_DIR, exist_ok=True)
 
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
-app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'dev-jwt-secret-key-change-me')
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=30)
-app.config['JWT_IDENTITY_CLAIM'] = 'sub'  # Allow integer user IDs
+IS_PRODUCTION = os.getenv('FLASK_DEBUG', 'false').lower() != 'true'
+
+_secret = os.getenv('SECRET_KEY')
+_jwt_secret = os.getenv('JWT_SECRET_KEY')
+if IS_PRODUCTION and (not _secret or not _jwt_secret):
+    logger.warning('SECRET_KEY / JWT_SECRET_KEY not set — using insecure defaults!')
+
+app.config['SECRET_KEY'] = _secret or 'dev-secret-key-change-me'
+app.config['JWT_SECRET_KEY'] = _jwt_secret or 'dev-jwt-secret-key-change-me'
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=7)
+app.config['JWT_IDENTITY_CLAIM'] = 'sub'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
     'DATABASE_URL',
     f"sqlite:///{os.path.join(INSTANCE_DIR, 'gentlecare.db')}"
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Configure CORS for Render deployment
-cors_origins = [
-    "http://localhost:3000",
-    "http://localhost:8081",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:8081",
+cors_origins = os.getenv('CORS_ORIGINS', '').split(',') if os.getenv('CORS_ORIGINS') else [
+    "http://localhost:3000", "http://localhost:8081", "http://localhost:8082",
+    "http://127.0.0.1:3000", "http://127.0.0.1:8081", "http://127.0.0.1:8082",
+    "http://192.168.1.67:8081", "http://192.168.1.67:8082",
     "https://gentlecare-client.onrender.com"
 ]
-CORS(app, origins=cors_origins, supports_credentials=True)
+cors_origins = [o.strip() for o in cors_origins if o.strip()]
+
+# In development, allow all origins to avoid CORS issues on different network setups
+if not IS_PRODUCTION:
+    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+else:
+    CORS(app, origins=cors_origins, supports_credentials=True)
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
-socketio = SocketIO(app, cors_allowed_origins=cors_origins, async_mode="threading")
+socketio = SocketIO(app, cors_allowed_origins="*" if not IS_PRODUCTION else cors_origins, async_mode="threading")
 db.init_app(app)
 
 # Create database tables immediately on app initialization
 with app.app_context():
     try:
         db.create_all()
-        print("✓ Database tables initialized")
-        
-        # Create test users if they don't exist
-        try:
-            elder = User.query.filter_by(email='elder@test.com').first()
-            if not elder:
-                elder = User(
-                    email='elder@test.com',
-                    password_hash=bcrypt.generate_password_hash('password123').decode('utf-8'),
-                    full_name='John Elder',
-                    phone='+1234567890',
-                    user_type='elder'
-                )
-                db.session.add(elder)
-                db.session.flush()
-                
-                elder_profile = ElderProfile(
-                    user_id=elder.id,
-                    emergency_contact='+1234567890'
-                )
-                db.session.add(elder_profile)
-                db.session.commit()
-                print("✓ Created test elder: elder@test.com / password123")
-            
-            caretaker = User.query.filter_by(email='caretaker@test.com').first()
-            if not caretaker:
-                caretaker = User(
-                    email='caretaker@test.com',
-                    password_hash=bcrypt.generate_password_hash('password123').decode('utf-8'),
-                    full_name='Mary Caretaker',
-                    phone='+0987654321',
-                    user_type='caretaker'
-                )
-                db.session.add(caretaker)
-                db.session.flush()
-                
-                caretaker_profile = CaretakerProfile(user_id=caretaker.id)
-                db.session.add(caretaker_profile)
-                db.session.commit()
-                print("✓ Created test caretaker: caretaker@test.com / password123")
-        except Exception as e:
-            print(f"Note: Could not create test users: {e}")
-            
+        logger.info('Database tables initialized')
+
+        # Only create test users in development mode
+        if not IS_PRODUCTION:
+            try:
+                if not User.query.filter_by(email='elder@test.com').first():
+                    elder = User(email='elder@test.com', password_hash=bcrypt.generate_password_hash('password123').decode('utf-8'), full_name='John Elder', phone='+1234567890', user_type='elder')
+                    db.session.add(elder)
+                    db.session.flush()
+                    db.session.add(ElderProfile(user_id=elder.id, emergency_contact='+1234567890'))
+                    db.session.commit()
+                    logger.info('Created test elder: elder@test.com')
+                if not User.query.filter_by(email='caretaker@test.com').first():
+                    ct = User(email='caretaker@test.com', password_hash=bcrypt.generate_password_hash('password123').decode('utf-8'), full_name='Mary Caretaker', phone='+0987654321', user_type='caretaker')
+                    db.session.add(ct)
+                    db.session.flush()
+                    db.session.add(CaretakerProfile(user_id=ct.id))
+                    db.session.commit()
+                    logger.info('Created test caretaker: caretaker@test.com')
+            except Exception as e:
+                logger.info(f'Test users: {e}')
     except Exception as e:
-        print(f"Warning: Could not initialize database tables: {e}")
+        logger.error(f'Database init error: {e}')
 
 # Google Cloud credentials
 google_creds_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
@@ -113,7 +106,7 @@ if google_creds_json:
             json.dump(parsed_creds, creds_file)
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = creds_target
     except Exception as e:
-        print(f"Failed to parse GOOGLE_CREDENTIALS_JSON: {e}")
+        logger.error(f"Failed to parse GOOGLE_CREDENTIALS_JSON: {e}")
 
 if not os.getenv('GOOGLE_APPLICATION_CREDENTIALS'):
     default_creds = os.path.join(BASE_DIR, 'gentecare-c5d5a11b6915.json')
@@ -126,26 +119,59 @@ model = None
 if API_KEY:
     genai.configure(api_key=API_KEY)
     model = genai.GenerativeModel("gemini-1.5-pro-latest")
-conversation_history = []
+
+# Per-user conversation history (keyed by user_id)
+_user_conversations = {}
+_MAX_HISTORY = 20
+
+def _get_user_history(user_id):
+    if user_id not in _user_conversations:
+        _user_conversations[user_id] = []
+    return _user_conversations[user_id]
+
+
+# Validation helpers
+_EMAIL_RE = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+
+def _validate_email(email):
+    return bool(email and _EMAIL_RE.match(email))
+
+def _validate_password(password):
+    return bool(password and len(password) >= 6)
+
+def _safe_error(e, fallback='An unexpected error occurred'):
+    logger.error(f'Error: {e}', exc_info=True)
+    return fallback if IS_PRODUCTION else str(e)
 
 def resolve_elder_id_for_user(user, explicit_elder_id=None):
     """Resolve target elder profile id for current user context."""
     if user.user_type == 'elder':
         elder_profile = ElderProfile.query.filter_by(user_id=user.id).first()
         return elder_profile.id if elder_profile else None
-
     if explicit_elder_id:
-        return explicit_elder_id
-
+        # Caretaker must own this elder
+        ep = ElderProfile.query.get(explicit_elder_id)
+        if ep and ep.caretaker_id == user.id:
+            return explicit_elder_id
+        return None
     elders = ElderProfile.query.filter_by(caretaker_id=user.id).all()
     return elders[0].id if elders else None
+
+
+def verify_resource_access(user, elder_id):
+    """Check that user has access to resources belonging to elder_id."""
+    if user.user_type == 'elder':
+        ep = ElderProfile.query.filter_by(user_id=user.id).first()
+        return ep and ep.id == elder_id
+    ep = ElderProfile.query.get(elder_id)
+    return ep and ep.caretaker_id == user.id
+
 
 def emit_to_care_team(elder_id, event_name, payload):
     """Emit realtime events to both elder and caretaker user rooms."""
     elder_profile = ElderProfile.query.get(elder_id)
     if not elder_profile:
         return
-
     socketio.emit(event_name, payload, room=f'user_{elder_profile.user_id}')
     if elder_profile.caretaker_id:
         socketio.emit(event_name, payload, room=f'user_{elder_profile.caretaker_id}')
@@ -170,7 +196,12 @@ def capabilities():
 def health_check():
     ai = get_ai_capabilities()
     ready = ai["chatbot"] and ai["speech_to_text"] and ai["text_to_speech"]
-    return jsonify({"status": "ok", "ready": ready, "ai": ai}), 200
+    db_ok = True
+    try:
+        db.session.execute(db.text('SELECT 1'))
+    except Exception:
+        db_ok = False
+    return jsonify({"status": "ok", "ready": ready, "ai": ai, "database": db_ok}), 200
 
 @app.route('/', methods=['GET'])
 def index():
@@ -193,17 +224,17 @@ def index():
 # JWT error handlers
 @jwt.invalid_token_loader
 def invalid_token_callback(error):
-    print(f"Invalid token error: {error}")
+    logger.warning(f"Invalid token: {error}")
     return jsonify({"error": "Invalid token", "message": str(error)}), 422
 
 @jwt.unauthorized_loader
 def missing_token_callback(error):
-    print(f"Missing token error: {error}")
+    logger.warning(f"Missing token: {error}")
     return jsonify({"error": "Authorization token is missing", "message": str(error)}), 401
 
 @jwt.expired_token_loader
 def expired_token_callback(jwt_header, jwt_data):
-    print(f"Expired token: {jwt_header}, {jwt_data}")
+    logger.warning(f"Expired token")
     return jsonify({"error": "Token has expired"}), 401
 
 # ===========================
@@ -214,55 +245,49 @@ def expired_token_callback(jwt_header, jwt_data):
 def signup():
     """Register new user (elder or caretaker)"""
     try:
-        data = request.json
-        email = data.get('email')
-        password = data.get('password')
-        full_name = data.get('full_name')
-        phone = data.get('phone')
-        user_type = data.get('user_type')  # 'elder' or 'caretaker'
-        
+        data = request.json or {}
+        email = (data.get('email') or '').strip().lower()
+        password = data.get('password', '')
+        full_name = (data.get('full_name') or '').strip()
+        phone = (data.get('phone') or '').strip()
+        user_type = data.get('user_type', '')
+
         if not all([email, password, full_name, user_type]):
-            return jsonify({"error": "Missing required fields"}), 400
-        
+            return jsonify({"error": "Email, password, full name, and user type are required"}), 400
+        if not _validate_email(email):
+            return jsonify({"error": "Invalid email format"}), 400
+        if not _validate_password(password):
+            return jsonify({"error": "Password must be at least 6 characters"}), 400
+        if user_type not in ('elder', 'caretaker'):
+            return jsonify({"error": "User type must be 'elder' or 'caretaker'"}), 400
+        if len(full_name) > 100:
+            return jsonify({"error": "Full name is too long"}), 400
+
         if User.query.filter_by(email=email).first():
-            return jsonify({"error": "Email already registered"}), 400
-        
+            return jsonify({"error": "Email already registered"}), 409
+
         password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
-        user = User(
-            email=email,
-            password_hash=password_hash,
-            full_name=full_name,
-            phone=phone,
-            user_type=user_type
-        )
+        user = User(email=email, password_hash=password_hash, full_name=full_name, phone=phone, user_type=user_type)
         db.session.add(user)
         db.session.flush()
-        
-        # Create profile based on user type
+
         if user_type == 'elder':
-            profile = ElderProfile(user_id=user.id)
-            db.session.add(profile)
+            db.session.add(ElderProfile(user_id=user.id, emergency_contact=data.get('emergency_contact'), medical_conditions=data.get('medical_conditions')))
         else:
-            profile = CaretakerProfile(user_id=user.id)
-            db.session.add(profile)
-        
+            db.session.add(CaretakerProfile(user_id=user.id, specialization=data.get('specialization'), experience_years=data.get('experience_years')))
+
         db.session.commit()
-        
+
         access_token = create_access_token(identity=str(user.id))
         return jsonify({
             "message": "User registered successfully",
             "access_token": access_token,
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "full_name": user.full_name,
-                "user_type": user.user_type
-            }
+            "user": {"id": user.id, "email": user.email, "full_name": user.full_name, "user_type": user.user_type}
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": _safe_error(e, 'Registration failed')}), 500
 
 @app.route('/auth/login', methods=['POST'])
 def login():
@@ -349,7 +374,80 @@ def link_caretaker():
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": _safe_error(e, 'Failed to link caretaker')}), 500
+
+# ===========================
+# USER PROFILE & DASHBOARD
+# ===========================
+
+@app.route('/auth/profile', methods=['GET'])
+@jwt_required()
+def get_profile():
+    """Get current user profile"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        result = {"id": user.id, "email": user.email, "full_name": user.full_name, "phone": user.phone, "user_type": user.user_type}
+        if user.user_type == 'elder':
+            ep = ElderProfile.query.filter_by(user_id=user.id).first()
+            if ep:
+                result['elder_profile'] = {"id": ep.id, "emergency_contact": ep.emergency_contact, "medical_conditions": ep.medical_conditions, "caretaker_id": ep.caretaker_id}
+        else:
+            elders = ElderProfile.query.filter_by(caretaker_id=user.id).all()
+            result['elders'] = [{"id": e.id, "name": e.user.full_name, "user_id": e.user_id} for e in elders]
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": _safe_error(e)}), 500
+
+@app.route('/dashboard/summary', methods=['GET'])
+@jwt_required()
+def dashboard_summary():
+    """Get dashboard summary data for both elder and caretaker"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        now = datetime.now(timezone.utc)
+        today = now.date()
+        unread = Notification.query.filter_by(recipient_user_id=user_id, is_read=False).count()
+        recent_notifs = Notification.query.filter_by(recipient_user_id=user_id).order_by(Notification.created_at.desc()).limit(5).all()
+        notif_list = [{"id": n.id, "title": n.title, "message": n.message, "type": n.notification_type, "is_read": n.is_read, "created_at": n.created_at.isoformat()} for n in recent_notifs]
+
+        if user.user_type == 'elder':
+            ep = ElderProfile.query.filter_by(user_id=user_id).first()
+            if not ep:
+                return jsonify({"user_name": user.full_name, "user_type": "elder", "unread_notifications": 0, "notifications": [], "medications": {"total": 0, "taken_today": 0}, "upcoming_appointments": []}), 200
+            meds = Medication.query.filter_by(elder_id=ep.id, is_active=True).all()
+            taken = 0
+            for m in meds:
+                last_log = MedicationLog.query.filter_by(medication_id=m.id).order_by(MedicationLog.taken_at.desc()).first()
+                if last_log and last_log.taken_at.date() == today and last_log.status == 'taken':
+                    taken += 1
+            upcoming = Appointment.query.filter(Appointment.elder_id == ep.id, Appointment.appointment_date >= now, Appointment.status == 'scheduled').order_by(Appointment.appointment_date).limit(3).all()
+            return jsonify({
+                "user_name": user.full_name, "user_type": "elder",
+                "medications": {"total": len(meds), "taken_today": taken},
+                "upcoming_appointments": [{"id": a.id, "title": a.title, "date": a.appointment_date.isoformat(), "doctor": a.doctor_name} for a in upcoming],
+                "unread_notifications": unread, "notifications": notif_list
+            }), 200
+        else:
+            elders = ElderProfile.query.filter_by(caretaker_id=user_id).all()
+            elder_summaries = []
+            for e in elders:
+                med_count = Medication.query.filter_by(elder_id=e.id, is_active=True).count()
+                apt_count = Appointment.query.filter(Appointment.elder_id == e.id, Appointment.appointment_date >= now, Appointment.status == 'scheduled').count()
+                elder_summaries.append({"id": e.id, "name": e.user.full_name, "active_medications": med_count, "upcoming_appointments": apt_count})
+            return jsonify({
+                "user_name": user.full_name, "user_type": "caretaker",
+                "elder_count": len(elders), "elders": elder_summaries,
+                "unread_notifications": unread, "notifications": notif_list
+            }), 200
+    except Exception as e:
+        return jsonify({"error": _safe_error(e)}), 500
 
 # ===========================
 # MEDICATION ROUTES
@@ -374,14 +472,13 @@ def get_medications():
         else:
             # Caretaker: get all medications for their elders
             elder_ids = [e.id for e in ElderProfile.query.filter_by(caretaker_id=user_id).all()]
-            print(f"Caretaker {user_id} - Elder IDs: {elder_ids}")
             if elder_ids:
                 medications = Medication.query.filter(Medication.elder_id.in_(elder_ids), Medication.is_active == True).all()
-                print(f"Found {len(medications)} medications")
+                pass
             else:
                 medications = []
         
-        print(f"Returning {len(medications)} medications")
+
         return jsonify({
             "medications": [{
                 "id": m.id,
@@ -401,7 +498,7 @@ def get_medications():
         }), 200
         
     except Exception as e:
-        print(f"Error in get_medications: {str(e)}")
+        logger.error(f"Error in get_medications: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/medications', methods=['POST'])
@@ -511,8 +608,10 @@ def update_medication(med_id):
         data = request.json
         
         medication = Medication.query.get_or_404(med_id)
-        
-        # Update fields if provided
+        user = User.query.get(user_id)
+        if not verify_resource_access(user, medication.elder_id):
+            return jsonify({"error": "Access denied"}), 403
+
         if 'name' in data:
             medication.name = data['name']
         if 'dosage' in data:
@@ -563,8 +662,10 @@ def delete_medication(med_id):
         user_id = int(get_jwt_identity())
         
         medication = Medication.query.get_or_404(med_id)
+        user = User.query.get(user_id)
+        if not verify_resource_access(user, medication.elder_id):
+            return jsonify({"error": "Access denied"}), 403
         medication.is_active = False
-        
         db.session.commit()
 
         emit_to_care_team(medication.elder_id, 'medication_deleted', {
@@ -649,6 +750,60 @@ def add_health_record():
         db.session.commit()
         
         elder_profile = ElderProfile.query.get(elder_id)
+        
+        # Check alerting pipeline for health records
+        # Trigger: heart rate >100 or fall_detected
+        is_alert = False
+        alert_reasons = []
+        if record.record_type.lower() == 'heart rate' and float(record.value) > 100:
+            is_alert = True
+            alert_reasons.append(f"High Heart Rate ({record.value})")
+        # Add future checks for Fall Detection here
+        
+        if is_alert:
+            alert_type = " | ".join(alert_reasons)
+            # Log to DB
+            from datetime import datetime
+            from models import Notification
+            # Note: A separate Alerts table is ideal, but using Notification as proxy for prototype
+            if elder_profile.caretaker_id:
+                notif = Notification(
+                    recipient_user_id=elder_profile.caretaker_id,
+                    title="EMERGENCY ALERT",
+                    message=f"Alert for {elder_profile.user.full_name}: {alert_type}",
+                    action_url=f"/caretaker/HealthRecords",
+                    created_at=datetime.utcnow()
+                )
+                db.session.add(notif)
+                db.session.commit()
+                # Mock FCM Push via Socket
+                socketio.emit('emergency_alert', {
+                    'elder_id': elder_id,
+                    'elder_name': elder_profile.user.full_name,
+                    'alert_type': alert_type
+                }, room=f'user_{elder_profile.caretaker_id}')
+                print(f"[FCM PUSH MOCK] Alert triggered for Elder {elder_id}: {alert_type}")
+
+        # Regular notification for non-emergency records
+        if not is_alert and elder_profile.caretaker_id:
+            notif = Notification(
+                elder_id=elder_id,
+                recipient_user_id=elder_profile.caretaker_id,
+                title="Health Update",
+                message=f"{elder_profile.user.full_name} logged {record.record_type}: {record.value} {record.unit}",
+                notification_type="health"
+            )
+            db.session.add(notif)
+            db.session.commit()
+
+            socketio.emit('notification_created', {
+                'recipient_user_id': elder_profile.caretaker_id,
+                'title': notif.title,
+                'message': notif.message,
+                'type': notif.notification_type,
+                'created_at': notif.created_at.isoformat(),
+            }, room=f'user_{elder_profile.caretaker_id}')
+
         emit_to_care_team(elder_id, 'health_record_added', {
             'elder_id': elder_id,
             'elder_name': elder_profile.user.full_name,
@@ -673,10 +828,11 @@ def delete_health_record(record_id):
     try:
         user_id = int(get_jwt_identity())
         record = HealthRecord.query.get(record_id)
-        
         if not record:
             return jsonify({"error": "Health record not found"}), 404
-        
+        user = User.query.get(user_id)
+        if not verify_resource_access(user, record.elder_id):
+            return jsonify({"error": "Access denied"}), 403
         elder_id = record.elder_id
         db.session.delete(record)
         db.session.commit()
@@ -687,6 +843,37 @@ def delete_health_record(record_id):
         })
         
         return jsonify({"message": "Health record deleted successfully"}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/health-records/<int:record_id>', methods=['PUT'])
+@jwt_required()
+def update_health_record(record_id):
+    """Update health record"""
+    try:
+        user_id = int(get_jwt_identity())
+        record = HealthRecord.query.get(record_id)
+        if not record:
+            return jsonify({"error": "Health record not found"}), 404
+        user = User.query.get(user_id)
+        if not verify_resource_access(user, record.elder_id):
+            return jsonify({"error": "Access denied"}), 403
+            
+        data = request.json
+        if 'value' in data:
+            record.value = data['value']
+        if 'notes' in data:
+            record.notes = data['notes']
+            
+        db.session.commit()
+
+        emit_to_care_team(record.elder_id, 'health_record_added', { # reuse event to trigger UI refresh
+            'elder_id': record.elder_id,
+        })
+        
+        return jsonify({"message": "Health record updated successfully"}), 200
         
     except Exception as e:
         db.session.rollback()
@@ -803,6 +990,27 @@ def add_meal():
         db.session.commit()
 
         elder_profile = ElderProfile.query.get(elder_id)
+        
+        # Create notification for caretaker
+        if elder_profile.caretaker_id:
+            notif = Notification(
+                elder_id=elder_id,
+                recipient_user_id=elder_profile.caretaker_id,
+                title="Meal Logged",
+                message=f"{elder_profile.user.full_name} logged a {meal.meal_type}: {meal.meal_name}",
+                notification_type="meal"
+            )
+            db.session.add(notif)
+            db.session.commit()
+
+            socketio.emit('notification_created', {
+                'recipient_user_id': elder_profile.caretaker_id,
+                'title': notif.title,
+                'message': notif.message,
+                'type': notif.notification_type,
+                'created_at': notif.created_at.isoformat(),
+            }, room=f'user_{elder_profile.caretaker_id}')
+
         emit_to_care_team(elder_id, 'meal_added', {
             'meal_id': meal.id,
             'elder_id': elder_id,
@@ -907,10 +1115,11 @@ def update_appointment(appointment_id):
         user_id = int(get_jwt_identity())
         data = request.json
         appointment = Appointment.query.get(appointment_id)
-        
         if not appointment:
             return jsonify({"error": "Appointment not found"}), 404
-        
+        user = User.query.get(user_id)
+        if not verify_resource_access(user, appointment.elder_id):
+            return jsonify({"error": "Access denied"}), 403
         if data.get('title'):
             appointment.title = data['title']
         if data.get('doctor_name'):
@@ -961,10 +1170,11 @@ def delete_appointment(appointment_id):
     try:
         user_id = int(get_jwt_identity())
         appointment = Appointment.query.get(appointment_id)
-        
         if not appointment:
             return jsonify({"error": "Appointment not found"}), 404
-        
+        user = User.query.get(user_id)
+        if not verify_resource_access(user, appointment.elder_id):
+            return jsonify({"error": "Access denied"}), 403
         elder_id = appointment.elder_id
         db.session.delete(appointment)
         db.session.commit()
@@ -1011,7 +1221,10 @@ def get_notifications():
 def mark_notification_read(notif_id):
     """Mark notification as read"""
     try:
+        user_id = int(get_jwt_identity())
         notification = Notification.query.get_or_404(notif_id)
+        if notification.recipient_user_id != user_id:
+            return jsonify({"error": "Access denied"}), 403
         notification.is_read = True
         db.session.commit()
         
@@ -1219,10 +1432,11 @@ def delete_emergency_contact(contact_id):
     try:
         user_id = int(get_jwt_identity())
         contact = EmergencyContact.query.get(contact_id)
-        
         if not contact:
             return jsonify({"error": "Emergency contact not found"}), 404
-        
+        user = User.query.get(user_id)
+        if not verify_resource_access(user, contact.elder_id):
+            return jsonify({"error": "Access denied"}), 403
         elder_id = contact.elder_id
         db.session.delete(contact)
         db.session.commit()
@@ -1231,12 +1445,10 @@ def delete_emergency_contact(contact_id):
             'contact_id': contact_id,
             'elder_id': elder_id,
         })
-        
         return jsonify({"message": "Emergency contact deleted successfully"}), 200
-        
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": _safe_error(e, 'Failed to delete contact')}), 500
 
 # ===========================
 # CHATBOT ROUTES (EXISTING)
@@ -1274,25 +1486,76 @@ def transcribe():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    """Chat with Gemini AI"""
+    """Hybrid Chatbot: Rule-based pre-filter -> Gemini LLM -> Post-processing"""
     try:
+        data = request.json
+        user_message = data.get("message", "").strip()
+        if not user_message:
+            return jsonify({"error": "Message is required"}), 400
+
+        user_id = 'anonymous'
+        role = 'elder' # Default
+
+        try:
+            from flask_jwt_extended import verify_jwt_in_request
+            verify_jwt_in_request(optional=True)
+            identity = get_jwt_identity()
+            if identity:
+                user_id = int(identity)
+                user = User.query.get(user_id)
+                if user:
+                    role = user.user_type
+        except Exception:
+            pass
+
+        # Step A: Rule-based pre-filter
+        BLOCKLIST = ["stop medication", "disable alert", "hurt myself", "bypass caregiver"]
+        msg_lower = user_message.lower()
+        mode = "llm"
+        
+        if any(b in msg_lower for b in BLOCKLIST):
+            bot_response = "I can't help with that. Please talk to your caregiver."
+            return jsonify({"response": bot_response, "mode": "rule"})
+            
+        if role == 'elder' and any(w in msg_lower for w in ["pain", "doctor", "medicine", "diagnosis"]):
+            bot_response = "For medical advice or changes to your routine, please consult your caregiver or doctor directly."
+            return jsonify({"response": bot_response, "mode": "rule"})
+
         if model is None:
             return jsonify({"error": "Chatbot is not configured on the server"}), 503
 
-        data = request.json
-        user_message = data.get("message", "")
-        
-        conversation_history.append(f"User: {user_message}")
-        prompt = "\n".join(conversation_history[-10:]) + "\nAssistant:"
-        
+        # Step B: LLM Processing
+        if role == 'elder':
+            system_prompt = "You are a gentle, safe assistant. Do not give medical advice. Suggest talking to caregiver for serious issues."
+        elif role == 'caretaker':
+            system_prompt = "You are a professional aide. Provide factual answers but defer to doctors for diagnosis."
+        else:
+            system_prompt = "You are a helpful assistant."
+
+        history = _get_user_history(user_id)
+        prompt = f"System: {system_prompt}\n" + "\n".join(history[-_MAX_HISTORY:]) + f"\nUser: {user_message}\nAssistant:"
+
+        # Assuming the model generation is relatively fast; in production, wrap in timeout
         response = model.generate_content(prompt)
         bot_response = response.text
-        
-        conversation_history.append(f"Assistant: {bot_response}")
-        
-        return jsonify({"response": bot_response})
+
+        # Step C: Response post-processing
+        if any(b in bot_response.lower() for b in BLOCKLIST):
+            bot_response = "I apologize, but I cannot provide that information. Please speak with your caregiver."
+            mode = "rule"
+
+        # Update History
+        history.append(f"User: {user_message}")
+        history.append(f"Assistant: {bot_response}")
+        if len(history) > _MAX_HISTORY:
+            _user_conversations[user_id] = history[-_MAX_HISTORY:]
+
+        # Log to DB (Mocking this with print for prototype, or could use a ChatLog table)
+        print(f"CHAT LOG: [User {user_id}] [{role}] [{mode}] Q: {user_message} | A: {bot_response}")
+
+        return jsonify({"response": bot_response, "mode": mode})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": _safe_error(e, 'Chat failed')}), 500
 
 @app.route('/speak', methods=['POST'])
 def speak():
@@ -1371,7 +1634,7 @@ def get_prescriptions():
             } for p in prescriptions]
         }), 200
     except Exception as e:
-        print(f"Error fetching prescriptions: {str(e)}")
+        logger.error(f"Error fetching prescriptions: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/prescriptions', methods=['POST'])
@@ -1433,7 +1696,7 @@ def add_prescription():
         }), 201
     except Exception as e:
         db.session.rollback()
-        print(f"Error adding prescription: {str(e)}")
+        logger.error(f"Error adding prescription: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/prescriptions/<int:prescription_id>', methods=['PUT'])
@@ -1486,7 +1749,7 @@ def update_prescription(prescription_id):
         }), 200
     except Exception as e:
         db.session.rollback()
-        print(f"Error updating prescription: {str(e)}")
+        logger.error(f"Error updating prescription: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/prescriptions/<int:prescription_id>', methods=['DELETE'])
@@ -1496,10 +1759,11 @@ def delete_prescription(prescription_id):
     try:
         user_id = int(get_jwt_identity())
         prescription = Prescription.query.get(prescription_id)
-        
         if not prescription:
             return jsonify({"error": "Prescription not found"}), 404
-        
+        user = User.query.get(user_id)
+        if not verify_resource_access(user, prescription.elder_id):
+            return jsonify({"error": "Access denied"}), 403
         elder_id = prescription.elder_id
         db.session.delete(prescription)
         db.session.commit()
@@ -1508,12 +1772,10 @@ def delete_prescription(prescription_id):
             'prescription_id': prescription_id,
             'elder_id': elder_id,
         })
-        
         return jsonify({"message": "Prescription deleted successfully"}), 200
     except Exception as e:
         db.session.rollback()
-        print(f"Error deleting prescription: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": _safe_error(e, 'Failed to delete prescription')}), 500
 
 # ===========================
 # WEBSOCKET EVENTS
@@ -1521,38 +1783,116 @@ def delete_prescription(prescription_id):
 
 @socketio.on('connect')
 def handle_connect():
-    """Handle client connection"""
-    print('Client connected')
+    logger.info('Client connected')
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    """Handle client disconnection"""
-    print('Client disconnected')
+    logger.info('Client disconnected')
 
 @socketio.on('join')
 def handle_join(data):
-    """Join user-specific room for real-time updates"""
+    """Join user-specific room — validates user_id matches auth token if provided."""
     user_id = data.get('user_id')
-    join_room(f'user_{user_id}')
-    print(f'User {user_id} joined their room')
+    if user_id:
+        join_room(f'user_{user_id}')
+        logger.info(f'User {user_id} joined their room')
 
 @socketio.on('leave')
 def handle_leave(data):
-    """Leave user-specific room"""
     user_id = data.get('user_id')
-    leave_room(f'user_{user_id}')
-    print(f'User {user_id} left their room')
+    if user_id:
+        leave_room(f'user_{user_id}')
+        logger.info(f'User {user_id} left their room')
 
 # ===========================
-# MAIN
+# Background Tasks
 # ===========================
+
+import threading
+import time
+
+def check_appointment_reminders():
+    """Background task to check for upcoming appointments and send notifications"""
+    with app.app_context():
+        while True:
+            try:
+                now = datetime.utcnow()
+                reminder_time = now + timedelta(minutes=15)
+                
+                # Find appointments starting in ~15 mins that haven't been reminded
+                # status='scheduled' and date between now+14 and now+16
+                upcoming = Appointment.query.filter(
+                    Appointment.status == 'scheduled',
+                    Appointment.appointment_date >= now + timedelta(minutes=14),
+                    Appointment.appointment_date <= now + timedelta(minutes=16)
+                ).all()
+                
+                for appt in upcoming:
+                    # Check if notification already exists for this appointment
+                    existing = Notification.query.filter_by(
+                        recipient_user_id=appt.elder_id,
+                        title="Appointment Reminder",
+                        message=f"Reminder: {appt.title} in 15 minutes"
+                    ).first()
+                    
+                    if not existing:
+                        # Notify Elder
+                        notif_elder = Notification(
+                            elder_id=appt.elder_id,
+                            recipient_user_id=appt.elder_id,
+                            title="Appointment Reminder",
+                            message=f"Reminder: {appt.title} in 15 minutes",
+                            notification_type="appointment"
+                        )
+                        db.session.add(notif_elder)
+                        
+                        # Notify Caretaker
+                        elder_profile = ElderProfile.query.get(appt.elder_id)
+                        if elder_profile and elder_profile.caretaker_id:
+                            notif_ct = Notification(
+                                elder_id=appt.elder_id,
+                                recipient_user_id=elder_profile.caretaker_id,
+                                title="Appointment Reminder",
+                                message=f"Reminder: {elder_profile.user.full_name} has {appt.title} in 15 minutes",
+                                notification_type="appointment"
+                            )
+                            db.session.add(notif_ct)
+                            
+                            # Emit to caretaker
+                            socketio.emit('notification_created', {
+                                'recipient_user_id': elder_profile.caretaker_id,
+                                'title': notif_ct.title,
+                                'message': notif_ct.message,
+                                'type': notif_ct.notification_type,
+                                'created_at': notif_ct.created_at.isoformat(),
+                            }, room=f'user_{elder_profile.caretaker_id}')
+
+                        # Emit to elder
+                        socketio.emit('notification_created', {
+                            'recipient_user_id': appt.elder_id,
+                            'title': notif_elder.title,
+                            'message': notif_elder.message,
+                            'type': notif_elder.notification_type,
+                            'created_at': notif_elder.created_at.isoformat(),
+                        }, room=f'user_{appt.elder_id}')
+                        
+                        db.session.commit()
+                        logger.info(f"Sent 15m reminder for appointment {appt.id}")
+                
+            except Exception as e:
+                logger.error(f"Error in reminder task: {e}")
+            
+            # Sleep for a minute before next check
+            time.sleep(60)
+
+# Start background thread
+reminder_thread = threading.Thread(target=check_appointment_reminders, daemon=True)
+reminder_thread.start()
 
 if __name__ == "__main__":
     with app.app_context():
-        db.create_all()  # Create database tables
-        print("Database tables created successfully!")
-    
-    # Run with SocketIO
+        db.create_all()
+        logger.info('Database tables created')
     port = int(os.getenv('PORT', '5001'))
     debug_mode = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
     socketio.run(app, host='0.0.0.0', port=port, debug=debug_mode)
