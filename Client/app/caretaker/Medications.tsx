@@ -18,8 +18,7 @@ import {
 import CustomCard from "../components/CustomCard";
 import BackButton from "../components/BackButton";
 import CustomSnackbar from "../components/CustomSnackbar";
-import { medicationAPI } from "../../services/api";
-// import { socketService } from "../../services/socket"; // TODO: Implement socket service
+import { medicationAPI, socketService, authAPI } from "../../services/api";
 
 interface Medication {
   id: number;
@@ -58,9 +57,6 @@ export default function CaretakerMedications() {
     try {
       setLoading(true);
       const response = await medicationAPI.getAll();
-      console.log('Medications API response:', response);
-      console.log('Medications array:', response.medications);
-      console.log('Number of medications:', response.medications?.length || 0);
       setMedications(response.medications || []);
     } catch (error: any) {
       console.error('Error loading medications:', error);
@@ -71,18 +67,35 @@ export default function CaretakerMedications() {
     }
   }, []);
 
+  // Resolve the first linked elder's ID for adding medications
+  const [elderId, setElderId] = useState<number | null>(null);
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const profile = await authAPI.getProfile();
+        if (profile.elders && profile.elders.length > 0) {
+          setElderId(profile.elders[0].id);
+        }
+      } catch (e) {
+        // Profile load failed
+      }
+    };
+    loadProfile();
+  }, []);
+
   useEffect(() => {
     loadMedications();
-
-    // TODO: Implement real-time updates when socket service is available
-    // socketService.on('medication_logged', (data: any) => {
-    //   showSnackbar(`✅ ${data.elder_name || 'Elder'} took ${data.medication_name}`);
-    //   loadMedications();
-    // });
-
-    // return () => {
-    //   socketService.off('medication_logged');
-    // };
+    const refresh = () => loadMedications();
+    socketService.on('medication_added', refresh);
+    socketService.on('medication_logged', refresh);
+    socketService.on('medication_updated', refresh);
+    socketService.on('medication_deleted', refresh);
+    return () => {
+      socketService.off('medication_added', refresh);
+      socketService.off('medication_logged', refresh);
+      socketService.off('medication_updated', refresh);
+      socketService.off('medication_deleted', refresh);
+    };
   }, [loadMedications]);
 
   const onRefresh = async () => {
@@ -97,8 +110,12 @@ export default function CaretakerMedications() {
     }
 
     try {
+      if (!elderId) {
+        Alert.alert('Error', 'No elder linked to your account. Please link an elder first.');
+        return;
+      }
       await medicationAPI.add({
-        elder_id: 1,
+        elder_id: elderId,
         name: formData.name,
         dosage: formData.dosage,
         time: formData.time,
@@ -223,9 +240,9 @@ export default function CaretakerMedications() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <BackButton />
-      <Text style={styles.header}>💊 Medications</Text>
+      <Text style={[styles.header, { color: colors.primary }]}>💊 Medications</Text>
 
       <ScrollView
         style={styles.scrollView}
@@ -236,10 +253,10 @@ export default function CaretakerMedications() {
         {medications.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>💊</Text>
-            <Text style={styles.noMedsText}>
+            <Text style={[styles.noMedsText, { color: colors.onSurfaceVariant || "#333" }]}>
               No medications added yet
             </Text>
-            <Text style={styles.noMedsSubtext}>
+            <Text style={[styles.noMedsSubtext, { color: colors.onSurfaceVariant || "#666" }]}>
               Tap the + button to add a medication for your elder
             </Text>
           </View>
@@ -249,8 +266,8 @@ export default function CaretakerMedications() {
               <View style={styles.cardContent}>
                 <View style={styles.cardTop}>
                   <View style={styles.medNameRow}>
-                    <Text style={styles.medName}>{med.name}</Text>
-                    <Text style={styles.medDosage}>{med.dosage}</Text>
+                    <Text style={[styles.medName, { color: colors.onSurface || "#1A1D21" }]}>{med.name}</Text>
+                    <Text style={[styles.medDosage, { color: colors.onSurfaceVariant || "#666" }]}>{med.dosage}</Text>
                   </View>
                   <View style={[
                     styles.statusBadge,
@@ -265,20 +282,20 @@ export default function CaretakerMedications() {
                 </View>
 
                 <View style={styles.medInfo}>
-                  <View style={styles.infoItem}>
+                  <View style={[styles.infoItem, { backgroundColor: colors.surfaceVariant || "#F0F0F0" }]}>
                     <Text style={styles.infoIcon}>⏰</Text>
-                    <Text style={styles.infoText}>{med.time}</Text>
+                    <Text style={[styles.infoText, { color: colors.onSurfaceVariant || "#444" }]}>{med.time}</Text>
                   </View>
-                  <View style={styles.infoItem}>
+                  <View style={[styles.infoItem, { backgroundColor: colors.surfaceVariant || "#F0F0F0" }]}>
                     <Text style={styles.infoIcon}>🔄</Text>
-                    <Text style={styles.infoText}>{med.frequency}</Text>
+                    <Text style={[styles.infoText, { color: colors.onSurfaceVariant || "#444" }]}>{med.frequency}</Text>
                   </View>
                 </View>
 
                 {med.instructions && (
-                  <View style={styles.instructionsBox}>
-                    <Text style={styles.instructionsLabel}>📝 Instructions:</Text>
-                    <Text style={styles.instructionsText}>{med.instructions}</Text>
+                  <View style={[styles.instructionsBox, { backgroundColor: colors.surfaceVariant || "#FFF9E6", borderLeftColor: colors.primary }]}>
+                    <Text style={[styles.instructionsLabel, { color: colors.primary }]}>📝 Instructions:</Text>
+                    <Text style={[styles.instructionsText, { color: colors.onSurfaceVariant || "#444" }]}>{med.instructions}</Text>
                   </View>
                 )}
 
@@ -511,14 +528,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 10,
-    backgroundColor: '#F5F5F5',
   },
   header: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontFamily: "Poppins_700Bold",
     marginBottom: 20,
     textAlign: 'center',
-    color: '#333',
   },
   scrollView: {
     flex: 1,
@@ -526,7 +541,7 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: 16,
-    elevation: 3,
+    elevation: 0,
     borderRadius: 12,
   },
   cardContent: {
@@ -544,14 +559,12 @@ const styles = StyleSheet.create({
   },
   medName: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1976D2',
+    fontFamily: "Poppins_700Bold",
     marginBottom: 4,
   },
   medDosage: {
     fontSize: 16,
-    color: '#666',
-    fontWeight: '600',
+    fontFamily: "Poppins_600SemiBold",
   },
   medInfo: {
     flexDirection: 'row',
@@ -561,7 +574,6 @@ const styles = StyleSheet.create({
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F0F0',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -572,27 +584,23 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
-    color: '#444',
-    fontWeight: '500',
+    fontFamily: "Poppins_500Medium",
   },
   instructionsBox: {
-    backgroundColor: '#FFF9E6',
     padding: 12,
     borderRadius: 8,
     marginBottom: 12,
     borderLeftWidth: 3,
-    borderLeftColor: '#FFC107',
   },
   instructionsLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
+    fontFamily: "Poppins_600SemiBold",
     marginBottom: 4,
   },
   instructionsText: {
     fontSize: 14,
-    color: '#444',
     lineHeight: 20,
+    fontFamily: "Poppins_400Regular",
   },
   actionButtons: {
     flexDirection: 'row',
@@ -637,7 +645,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: "Poppins_600SemiBold",
     color: '#333',
   },
   emptyContainer: {
@@ -654,12 +662,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     textAlign: 'center',
     marginBottom: 8,
-    fontWeight: '600',
+    fontFamily: "Poppins_600SemiBold",
   },
   noMedsSubtext: {
     fontSize: 14,
     textAlign: 'center',
-    color: '#666',
+    fontFamily: "Poppins_400Regular",
   },
   modalOverlay: {
     flex: 1,
@@ -676,7 +684,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 22,
-    fontWeight: 'bold',
+    fontFamily: "Poppins_700Bold",
     marginBottom: 20,
     textAlign: 'center',
   },

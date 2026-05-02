@@ -249,7 +249,7 @@ export default function Prescriptions() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <BackButton />
       <Text style={[styles.title, { color: colors.primary }]}>Prescriptions</Text>
 
@@ -268,7 +268,7 @@ export default function Prescriptions() {
                       <Ionicons name="document-text" size={28} color="#2196F3" />
                     </View>
                     <View style={styles.headerInfo}>
-                      <Text style={styles.dateText}>
+                      <Text style={[styles.dateText, { color: colors.onSurface || "#1A1D21" }]}>
                         {new Date(prescription.date).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -276,32 +276,32 @@ export default function Prescriptions() {
                         })}
                       </Text>
                       {prescription.doctor_name && (
-                        <Text style={styles.doctorText}>Dr. {prescription.doctor_name}</Text>
+                        <Text style={[styles.doctorText, { color: colors.onSurfaceVariant || "#666" }]}>Dr. {prescription.doctor_name}</Text>
                       )}
                     </View>
                   </View>
 
                   {prescription.diagnosis && (
-                    <View style={styles.diagnosisBox}>
-                      <Text style={styles.diagnosisLabel}>Diagnosis:</Text>
-                      <Text style={styles.diagnosisText}>{prescription.diagnosis}</Text>
+                    <View style={[styles.diagnosisBox, { backgroundColor: colors.surfaceVariant || "#FFF3E0", borderLeftColor: colors.error || "#FF9800" }]}>
+                      <Text style={[styles.diagnosisLabel, { color: colors.onSurfaceVariant || "#666" }]}>Diagnosis:</Text>
+                      <Text style={[styles.diagnosisText, { color: colors.onSurface || "#333" }]}>{prescription.diagnosis}</Text>
                     </View>
                   )}
 
                   <View style={styles.medicinesContainer}>
-                    <Text style={styles.medicinesLabel}>Medicines:</Text>
+                    <Text style={[styles.medicinesLabel, { color: colors.onSurface || "#333" }]}>Medicines:</Text>
                     {medicinesList.map((medicine, index) => (
                       <View key={index} style={styles.medicineRow}>
                         <Ionicons name="medical" size={16} color="#4CAF50" />
-                        <Text style={styles.medicineText}>{medicine}</Text>
+                        <Text style={[styles.medicineText, { color: colors.onSurfaceVariant || "#333" }]}>{medicine}</Text>
                       </View>
                     ))}
                   </View>
 
                   {prescription.notes && (
-                    <View style={styles.notesBox}>
-                      <Text style={styles.notesLabel}>Notes:</Text>
-                      <Text style={styles.notesText}>{prescription.notes}</Text>
+                    <View style={[styles.notesBox, { backgroundColor: colors.surfaceVariant || "#FFF9C4", borderLeftColor: colors.primary }]}>
+                      <Text style={[styles.notesLabel, { color: colors.primary }]}>Notes:</Text>
+                      <Text style={[styles.notesText, { color: colors.onSurfaceVariant || "#333" }]}>{prescription.notes}</Text>
                     </View>
                   )}
 
@@ -340,7 +340,7 @@ export default function Prescriptions() {
             );
           })
         ) : (
-          <Text style={styles.emptyText}>No prescriptions available</Text>
+          <Text style={[styles.emptyText, { color: colors.onSurfaceVariant || "#999" }]}>No prescriptions available</Text>
         )}
       </ScrollView>
 
@@ -550,7 +550,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 60,
-    backgroundColor: "#F5F5F5",
   },
   title: {
     fontSize: 24,
@@ -565,8 +564,7 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: 16,
-    elevation: 2,
-    backgroundColor: "#FFF",
+    elevation: 0,
   },
   cardContent: {
     padding: 16,
@@ -591,32 +589,26 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 18,
     fontFamily: "Poppins_600SemiBold",
-    color: "#333",
     marginBottom: 4,
   },
   doctorText: {
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
-    color: "#666",
   },
   diagnosisBox: {
-    backgroundColor: "#FFF3E0",
     padding: 12,
     borderRadius: 8,
     marginBottom: 12,
     borderLeftWidth: 4,
-    borderLeftColor: "#FF9800",
   },
   diagnosisLabel: {
     fontSize: 12,
     fontFamily: "Poppins_600SemiBold",
-    color: "#666",
     marginBottom: 4,
   },
   diagnosisText: {
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
-    color: "#333",
   },
   medicinesContainer: {
     marginBottom: 12,
@@ -624,7 +616,6 @@ const styles = StyleSheet.create({
   medicinesLabel: {
     fontSize: 14,
     fontFamily: "Poppins_600SemiBold",
-    color: "#333",
     marginBottom: 8,
   },
   medicineRow: {
@@ -636,28 +627,23 @@ const styles = StyleSheet.create({
   medicineText: {
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
-    color: "#333",
     marginLeft: 8,
     flex: 1,
   },
   notesBox: {
-    backgroundColor: "#FFF9C4",
     padding: 12,
     borderRadius: 8,
     marginBottom: 12,
     borderLeftWidth: 4,
-    borderLeftColor: "#FBC02D",
   },
   notesLabel: {
     fontSize: 12,
     fontFamily: "Poppins_600SemiBold",
-    color: "#666",
     marginBottom: 4,
   },
   notesText: {
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
-    color: "#333",
   },
   imageContainer: {
     marginBottom: 12,
@@ -687,7 +673,6 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: "center",
     fontSize: 16,
-    color: "#999",
     marginTop: 50,
     fontFamily: "Poppins_400Regular",
   },

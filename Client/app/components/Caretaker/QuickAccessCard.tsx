@@ -1,21 +1,29 @@
 import { View, StyleSheet, TouchableOpacity } from "react-native";
-import { Text } from "react-native-paper";
-import { Ionicons } from "@expo/vector-icons";
+import { Text, useTheme } from "react-native-paper";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 interface QuickAccessCardProps {
   title: string;
-  icon: string;
+  icon: any; // Allow MaterialCommunityIcons names
   color: string;
   onPress: () => void;
 }
 
 const QuickAccessCard = ({ title, icon, color, onPress }: QuickAccessCardProps) => {
+  const { colors } = useTheme();
+
   return (
-    <TouchableOpacity style={[styles.card, { borderColor: color }]} onPress={onPress}>
-      <View style={[styles.iconContainer, { backgroundColor: color }]}>
-        <Ionicons name={icon} size={30} color="white" />
+    <TouchableOpacity 
+      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border || '#E2E8F0', borderWidth: 1 }]} 
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
+        <MaterialCommunityIcons name={icon as any} size={28} color={color} />
       </View>
-      <Text style={styles.cardTitle}>{title}</Text>
+      <Text style={[styles.cardTitle, { color: colors.onSurface || "#1A1D21" }]} numberOfLines={2}>
+        {title}
+      </Text>
     </TouchableOpacity>
   );
 };
@@ -23,27 +31,25 @@ const QuickAccessCard = ({ title, icon, color, onPress }: QuickAccessCardProps) 
 const styles = StyleSheet.create({
   card: {
     width: "48%",
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 15,
-    borderWidth: 2,
-    justifyContent: "center",
-    alignItems: "center",
-    elevation: 3,
+    borderRadius: 16,
+    padding: 16,
+    justifyContent: "flex-start",
+    alignItems: "flex-start",
+    elevation: 0,
+    minHeight: 120,
   },
   iconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 16,
   },
   cardTitle: {
-    fontSize: 16,
-    fontFamily: "Poppins_500Medium",
-    textAlign: "center",
-    color: "#333",
+    fontSize: 15,
+    fontFamily: "Poppins_600SemiBold",
+    lineHeight: 22,
   },
 });
 

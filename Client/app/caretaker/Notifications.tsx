@@ -136,7 +136,7 @@ export default function CaretakerNotifications() {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <BackButton />
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: colors.primary }]}>Notifications</Text>
@@ -158,30 +158,30 @@ export default function CaretakerNotifications() {
               onPress={() => handleMarkAsRead(notification)}
               activeOpacity={0.7}
             >
-              <Card style={[styles.card, !notification.is_read && styles.unreadCard]}>
+              <Card style={[styles.card, { backgroundColor: colors.surface }, !notification.is_read && { borderLeftColor: colors.primary, borderLeftWidth: 4 }]}>
                 <Card.Content style={styles.cardContent}>
                   <View style={styles.notificationRow}>
                     <View
                       style={[
                         styles.iconCircle,
-                        { backgroundColor: getNotificationColor(notification.type) + "20" },
+                        { backgroundColor: getNotificationColor(notification.type || "system") + "20" },
                       ]}
                     >
                       <Ionicons
-                        name={getNotificationIcon(notification.type) as any}
+                        name={getNotificationIcon(notification.type || "system") as any}
                         size={24}
-                        color={getNotificationColor(notification.type)}
+                        color={getNotificationColor(notification.type || "system")}
                       />
                     </View>
                     <View style={styles.notificationContent}>
                       <View style={styles.notificationTop}>
-                        <Text style={styles.notificationType}>
-                          {notification.type.charAt(0).toUpperCase() + notification.type.slice(1)}
+                        <Text style={[styles.notificationType, { color: colors.onSurfaceVariant || "#666" }]}>
+                          {notification.type ? notification.type.charAt(0).toUpperCase() + notification.type.slice(1) : "Notification"}
                         </Text>
-                        {!notification.is_read && <View style={styles.unreadDot} />}
+                        {!notification.is_read && <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
                       </View>
-                      <Text style={styles.notificationMessage}>{notification.message}</Text>
-                      <Text style={styles.timestamp}>
+                      <Text style={[styles.notificationMessage, { color: colors.onSurface || "#333" }]}>{notification.message}</Text>
+                      <Text style={[styles.timestamp, { color: colors.onSurfaceVariant || "#999" }]}>
                         {formatTimestamp(notification.created_at)}
                       </Text>
                     </View>
@@ -191,7 +191,7 @@ export default function CaretakerNotifications() {
             </TouchableOpacity>
           ))
         ) : (
-          <Text style={styles.noNotifications}>No notifications available</Text>
+          <Text style={[styles.noNotifications, { color: colors.onSurfaceVariant || "#999" }]}>No notifications available</Text>
         )}
       </ScrollView>
 
@@ -206,7 +206,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 60,
-    backgroundColor: "#F5F5F5",
   },
   header: {
     flexDirection: "row",
@@ -242,12 +241,10 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: 12,
-    elevation: 2,
-    backgroundColor: "#FFF",
+    elevation: 0,
   },
   unreadCard: {
     borderLeftWidth: 4,
-    borderLeftColor: "#2196F3",
   },
   cardContent: {
     padding: 12,
@@ -275,7 +272,6 @@ const styles = StyleSheet.create({
   notificationType: {
     fontSize: 12,
     fontFamily: "Poppins_600SemiBold",
-    color: "#666",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginRight: 8,
@@ -284,24 +280,20 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#4CAF50",
   },
   notificationMessage: {
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
-    color: "#333",
     lineHeight: 20,
     marginBottom: 4,
   },
   timestamp: {
     fontSize: 12,
     fontFamily: "Poppins_400Regular",
-    color: "#999",
   },
   noNotifications: {
     textAlign: "center",
     fontSize: 16,
-    color: "#999",
     marginTop: 50,
     fontFamily: "Poppins_400Regular",
   },

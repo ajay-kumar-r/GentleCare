@@ -237,7 +237,7 @@ export default function Appointments() {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <BackButton />
       <Text style={[styles.title, { color: colors.primary }]}>Appointments</Text>
 
@@ -251,9 +251,9 @@ export default function Appointments() {
               <View style={styles.cardContent}>
                 <View style={styles.cardTop}>
                   <View style={styles.appointmentInfo}>
-                    <Text style={styles.appointmentTitle}>{appointment.title}</Text>
+                    <Text style={[styles.appointmentTitle, { color: colors.onSurface || "#1A1D21" }]}>{appointment.title}</Text>
                     {appointment.doctor_name && (
-                      <Text style={styles.doctorName}>Dr. {appointment.doctor_name}</Text>
+                      <Text style={[styles.doctorName, { color: colors.onSurfaceVariant || "#666" }]}>Dr. {appointment.doctor_name}</Text>
                     )}
                   </View>
                   <View
@@ -268,7 +268,7 @@ export default function Appointments() {
                 <View style={styles.detailsContainer}>
                   <View style={styles.detailRow}>
                     <Ionicons name="calendar" size={16} color="#2196F3" />
-                    <Text style={styles.detailText}>
+                    <Text style={[styles.detailText, { color: colors.onSurfaceVariant || "#666" }]}>
                       {new Date(appointment.appointment_date).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
@@ -278,7 +278,7 @@ export default function Appointments() {
                   </View>
                   <View style={styles.detailRow}>
                     <Ionicons name="time" size={16} color="#4CAF50" />
-                    <Text style={styles.detailText}>
+                    <Text style={[styles.detailText, { color: colors.onSurfaceVariant || "#666" }]}>
                       {new Date(appointment.appointment_date).toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -288,19 +288,19 @@ export default function Appointments() {
                   {appointment.location && (
                     <View style={styles.detailRow}>
                       <Ionicons name="location" size={16} color="#FF9800" />
-                      <Text style={styles.detailText}>{appointment.location}</Text>
+                      <Text style={[styles.detailText, { color: colors.onSurfaceVariant || "#666" }]}>{appointment.location}</Text>
                     </View>
                   )}
                   <View style={styles.detailRow}>
                     <Ionicons name="person" size={16} color="#9C27B0" />
-                    <Text style={styles.detailText}>{appointment.elder_name}</Text>
+                    <Text style={[styles.detailText, { color: colors.onSurfaceVariant || "#666" }]}>{appointment.elder_name}</Text>
                   </View>
                 </View>
 
                 {appointment.notes && (
-                  <View style={styles.notesBox}>
-                    <Text style={styles.notesLabel}>Notes:</Text>
-                    <Text style={styles.notesText}>{appointment.notes}</Text>
+                  <View style={[styles.notesBox, { backgroundColor: colors.surfaceVariant || "#FFF9C4", borderLeftColor: colors.primary }]}>
+                    <Text style={[styles.notesLabel, { color: colors.primary }]}>Notes:</Text>
+                    <Text style={[styles.notesText, { color: colors.onSurfaceVariant || "#333" }]}>{appointment.notes}</Text>
                   </View>
                 )}
 
@@ -350,7 +350,7 @@ export default function Appointments() {
             </CustomCard>
           ))
         ) : (
-          <Text style={styles.emptyText}>No appointments scheduled</Text>
+          <Text style={[styles.emptyText, { color: colors.onSurfaceVariant || "#999" }]}>No appointments scheduled</Text>
         )}
       </ScrollView>
 
@@ -583,7 +583,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 60,
-    backgroundColor: "#F5F5F5",
   },
   title: {
     fontSize: 24,
@@ -598,8 +597,7 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: 16,
-    elevation: 2,
-    backgroundColor: "#FFF",
+    elevation: 0,
   },
   cardContent: {
     padding: 16,
@@ -617,13 +615,11 @@ const styles = StyleSheet.create({
   appointmentTitle: {
     fontSize: 18,
     fontFamily: "Poppins_600SemiBold",
-    color: "#333",
     marginBottom: 4,
   },
   doctorName: {
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
-    color: "#666",
   },
   statusChip: {
     paddingHorizontal: 12,
@@ -643,28 +639,23 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: "#333",
     marginLeft: 8,
     fontFamily: "Poppins_400Regular",
   },
   notesBox: {
-    backgroundColor: "#FFF9C4",
     padding: 12,
     borderRadius: 8,
     marginBottom: 12,
     borderLeftWidth: 4,
-    borderLeftColor: "#FBC02D",
   },
   notesLabel: {
     fontSize: 12,
     fontFamily: "Poppins_600SemiBold",
-    color: "#666",
     marginBottom: 4,
   },
   notesText: {
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
-    color: "#333",
   },
   actionButtons: {
     flexDirection: "row",
@@ -700,7 +691,6 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: "center",
     fontSize: 16,
-    color: "#999",
     marginTop: 50,
     fontFamily: "Poppins_400Regular",
   },

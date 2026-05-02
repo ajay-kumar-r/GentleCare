@@ -186,7 +186,7 @@ export default function EmergencyContacts() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <BackButton />
       <Text style={[styles.title, { color: colors.primary }]}>Emergency Contacts</Text>
 
@@ -201,26 +201,26 @@ export default function EmergencyContacts() {
                 <View style={styles.cardTop}>
                   <View style={styles.contactInfo}>
                     <View style={styles.nameRow}>
-                      <Text style={styles.contactName}>{contact.name}</Text>
+                      <Text style={[styles.contactName, { color: colors.onSurface || "#1A1D21" }]}>{contact.name}</Text>
                       {contact.is_primary && (
                         <View style={styles.primaryBadge}>
                           <Text style={styles.primaryText}>Primary</Text>
                         </View>
                       )}
                     </View>
-                    <Text style={styles.relationship}>{contact.relationship}</Text>
+                    <Text style={[styles.relationship, { color: colors.onSurfaceVariant || "#666" }]}>{contact.relationship}</Text>
                   </View>
                 </View>
 
                 <View style={styles.detailsContainer}>
                   <View style={styles.detailRow}>
                     <Ionicons name="call" size={16} color="#4CAF50" />
-                    <Text style={styles.detailText}>{contact.phone}</Text>
+                    <Text style={[styles.detailText, { color: colors.onSurface || "#333" }]}>{contact.phone}</Text>
                   </View>
                   {contact.email && (
                     <View style={styles.detailRow}>
                       <Ionicons name="mail" size={16} color="#2196F3" />
-                      <Text style={styles.detailText}>{contact.email}</Text>
+                      <Text style={[styles.detailText, { color: colors.onSurface || "#333" }]}>{contact.email}</Text>
                     </View>
                   )}
                 </View>
@@ -249,7 +249,7 @@ export default function EmergencyContacts() {
             </CustomCard>
           ))
         ) : (
-          <Text style={styles.emptyText}>No emergency contacts added yet</Text>
+          <Text style={[styles.emptyText, { color: colors.onSurfaceVariant || "#999" }]}>No emergency contacts added yet</Text>
         )}
       </ScrollView>
 
@@ -404,7 +404,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 60,
-    backgroundColor: "#F5F5F5",
   },
   title: {
     fontSize: 24,
@@ -419,8 +418,7 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: 12,
-    elevation: 2,
-    backgroundColor: "#FFF",
+    elevation: 0,
   },
   cardContent: {
     padding: 16,
@@ -439,7 +437,6 @@ const styles = StyleSheet.create({
   contactName: {
     fontSize: 18,
     fontFamily: "Poppins_600SemiBold",
-    color: "#333",
   },
   primaryBadge: {
     marginLeft: 8,
@@ -455,7 +452,6 @@ const styles = StyleSheet.create({
   },
   relationship: {
     fontSize: 14,
-    color: "#666",
     fontFamily: "Poppins_400Regular",
   },
   detailsContainer: {
@@ -468,7 +464,6 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: "#333",
     marginLeft: 8,
     fontFamily: "Poppins_400Regular",
   },
@@ -491,7 +486,6 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: "center",
     fontSize: 16,
-    color: "#999",
     marginTop: 50,
     fontFamily: "Poppins_400Regular",
   },

@@ -6,6 +6,7 @@ import {
   Modal,
   Alert,
   RefreshControl,
+  TouchableOpacity,
 } from "react-native";
 import {
   Text,
@@ -14,6 +15,7 @@ import {
   useTheme,
   FAB,
 } from "react-native-paper";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import HealthCard from "../components/Elder/HealthCard";
 import HealthChart from "../components/Elder/HealthChart";
@@ -213,6 +215,25 @@ export default function HealthRecords() {
     }
   };
 
+  const handleDelete = (id: number) => {
+    Alert.alert("Delete Record", "Are you sure you want to delete this health record?", [
+      { text: "Cancel", style: "cancel" },
+      { 
+        text: "Delete", 
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await healthAPI.delete(id);
+            showSnackbar("Record deleted");
+            fetchRecords();
+          } catch (error: any) {
+            Alert.alert("Error", error.message || "Failed to delete record");
+          }
+        }
+      }
+    ]);
+  };
+
   const showSnackbar = (message: string) => {
     setSnackbarMsg(message);
     setSnackbarVisible(true);
@@ -222,7 +243,7 @@ export default function HealthRecords() {
   const glucoseData = getChartData("blood_glucose");
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -259,22 +280,52 @@ export default function HealthRecords() {
           color="#FFD54F" 
         />
 
-        {heartRateData.data.length > 0 && (
-          <HealthChart
-            title="Heart Rate Trends"
-            labels={heartRateData.labels}
-            data={heartRateData.data}
-            color="#E57373"
-          />
-        )}
-        
-        {glucoseData.data.length > 0 && (
-          <HealthChart
-            title="Glucose Levels (Past Week)"
-            labels={glucoseData.labels}
-            data={glucoseData.data}
-            color="#81C784"
-          />
+        {healthCategories.map(cat => {
+          const data = getChartData(cat.id);
+          if (data.data.length > 0) {
+            const color = cat.id === 'heart_rate' ? '#E57373' : 
+                          cat.id === 'blood_glucose' ? '#81C784' : 
+                          cat.id === 'blood_pressure' ? '#64B5F6' : 
+                          cat.id === 'oxygen_saturation' ? '#FFD54F' : 
+                          cat.id === 'temperature' ? '#FF8A65' : '#BA68C8';
+            return (
+              <HealthChart
+                key={`chart_${cat.id}`}
+                title={`${cat.label} Trends`}
+                labels={data.labels}
+                data={data.data}
+                color={color}
+              />
+            );
+          }
+          return null;
+        })}
+
+        {records.length > 0 && (
+          <View style={{ marginTop: 20 }}>
+            <Text style={[styles.title, { fontSize: 20 }]}>Recent Records</Text>
+            {records.slice(0, 10).map((record) => (
+              <CustomCard key={record.id} style={{ marginBottom: 12, padding: 15 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View>
+                    <Text style={{ fontFamily: "Poppins_700Bold", fontSize: 16, textTransform: 'capitalize', color: colors.onSurface || "#1A1D21" }}>
+                      {record.type.replace('_', ' ')}
+                    </Text>
+                    <Text style={{ fontSize: 24, color: colors.primary, marginVertical: 4, fontFamily: "Poppins_600SemiBold" }}>
+                      {record.value} <Text style={{ fontSize: 14, color: colors.onSurfaceVariant || '#666', fontFamily: "Poppins_400Regular" }}>{record.unit}</Text>
+                    </Text>
+                    {record.notes && <Text style={{ fontStyle: 'italic', color: colors.onSurfaceVariant || '#666', fontFamily: "Poppins_400Regular" }}>{record.notes}</Text>}
+                    <Text style={{ fontSize: 12, color: colors.onSurfaceVariant || '#999', marginTop: 4, fontFamily: "Poppins_400Regular" }}>
+                      {new Date(record.recorded_at).toLocaleString()}
+                    </Text>
+                  </View>
+                  <Button icon="delete" textColor="#f44336" onPress={() => handleDelete(record.id)}>
+                    Delete
+                  </Button>
+                </View>
+              </CustomCard>
+            ))}
+          </View>
         )}
       </ScrollView>
 
@@ -311,24 +362,60 @@ export default function HealthRecords() {
                 </>
               )}
 
-              <Text style={styles.sectionLabel}>Select Category *</Text>
+              <Text style={[styles.sectionLabel, { color: colors.onSurface || "#1A1D21" }]}>Select Category *</Text>
               <View style={styles.categoryGrid}>
-                {healthCategories.map((category) => (
-                  <Button
-                    key={category.id}
-                    mode={selectedCategory === category.id ? "contained" : "outlined"}
-                    onPress={() => {
-                      setSelectedCategory(category.id);
-                      setValue("");
-                      setValue2("");
-                    }}
-                    style={styles.categoryButton}
-                    icon={category.icon}
-                    contentStyle={styles.categoryButtonContent}
-                  >
-                    {category.label}
-                  </Button>
-                ))}
+                {healthCategories.map((category) => {
+                  const isActive = selectedCategory === category.id;
+                  const categoryColor = category.id === 'heart_rate' ? '#E57373' : 
+                                       category.id === 'blood_glucose' ? '#81C784' : 
+                                       category.id === 'blood_pressure' ? '#64B5F6' : 
+                                       category.id === 'oxygen_saturation' ? '#FFD54F' : 
+                                       category.id === 'temperature' ? '#FF8A65' : '#BA68C8';
+                  
+                  let iconName = category.icon as any;
+                  if (iconName === 'heart-pulse') iconName = 'heart-pulse';
+                  else if (iconName === 'heart') iconName = 'heart';
+                  else if (iconName === 'water') iconName = 'water';
+                  else if (iconName === 'thermometer') iconName = 'thermometer';
+                  else if (iconName === 'scale') iconName = 'scale-bathroom';
+                  else iconName = 'pulse';
+
+                  return (
+                    <TouchableOpacity
+                      key={category.id}
+                      onPress={() => {
+                        setSelectedCategory(category.id);
+                        setValue("");
+                        setValue2("");
+                      }}
+                      activeOpacity={0.7}
+                      style={[
+                        styles.categoryCard,
+                        { 
+                          borderColor: isActive ? categoryColor : colors.outline || '#E0E0E0',
+                          backgroundColor: isActive ? categoryColor + '15' : colors.surface,
+                        }
+                      ]}
+                    >
+                      <View style={[styles.categoryIconCircle, { backgroundColor: isActive ? categoryColor : (colors.surfaceVariant || '#F5F5F5') }]}>
+                        <MaterialCommunityIcons 
+                          name={iconName} 
+                          size={24} 
+                          color={isActive ? "#FFF" : categoryColor} 
+                        />
+                      </View>
+                      <Text style={[
+                        styles.categoryLabel, 
+                        { 
+                          color: isActive ? categoryColor : (colors.onSurface || '#333'),
+                          fontFamily: isActive ? "Poppins_600SemiBold" : "Poppins_400Regular"
+                        }
+                      ]}>
+                        {category.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
               {selectedCategory && (() => {
@@ -422,7 +509,6 @@ export default function HealthRecords() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
   },
   scrollContent: {
     paddingTop: 60,
@@ -465,23 +551,36 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 16,
     fontFamily: "Poppins_600SemiBold",
-    color: "#333",
     marginTop: 12,
     marginBottom: 12,
   },
   categoryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    justifyContent: "space-between",
     marginBottom: 16,
   },
-  categoryButton: {
-    flex: 1,
-    minWidth: "48%",
+  categoryCard: {
+    flexBasis: '48%',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    minHeight: 100,
+  },
+  categoryIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 8,
   },
-  categoryButtonContent: {
-    paddingVertical: 8,
+  categoryLabel: {
+    fontSize: 12,
+    textAlign: 'center',
   },
   valueSection: {
     marginTop: 8,
@@ -497,7 +596,6 @@ const styles = StyleSheet.create({
   slashText: {
     fontSize: 24,
     fontFamily: "Poppins_700Bold",
-    color: "#666",
     marginBottom: 12,
   },
   elderSelection: {
